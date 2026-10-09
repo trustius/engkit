@@ -52,7 +52,7 @@ verifiable slices, with testable acceptance criteria, risks and open questions.
 10. Write acceptance criteria. State that nothing was implemented.
 11. Write the plan to `docs/plans/YYYY-MM-DD-<slug>.md` at the project root (slug from the task,
     lower-case hyphenated), following the shared Plans and Sensitive data rules. Report the path.
-    A one-step change stays in the chat: say so and write no file.
+    Every /change-plan run writes this file, even for a small change.
 
 ## Output contract
 Fill in this template.
