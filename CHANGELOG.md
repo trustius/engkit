@@ -13,8 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `docs/plans/YYYY-MM-DD-<slug>.md` (never overwritten), nothing runs automatically
   on server environments, sensitive data is redacted, and work proceeds in small
   checked steps. `engkit validate` fails a skill that lacks them verbatim.
-- `/change-plan`, `/stack-select` and `/bug-investigate` write their plans to
-  `docs/plans/`.
+- `/change-plan` always writes a plan file to `docs/plans/`; `/stack-select` writes one
+  after an option is chosen; `/bug-investigate` writes one when the fix needs more than
+  one change.
 - Scenario evals for the shared guardrails in `evals/rules/`.
 
 ## [0.1.0] - Unreleased

@@ -44,11 +44,15 @@ No edits.
 
 
 def skill_text(
-    name: str, description: str = "A synthetic skill for tests.", extra: str = ""
+    name: str,
+    description: str = "A synthetic skill for tests.",
+    extra: str = "",
+    shared_guardrails: bool = True,
 ) -> str:
+    shared = "\n".join(SHARED_GUARDRAILS) if shared_guardrails else "Be careful."
     return (
         f"---\nname: {name}\ndescription: {description}\n---\n"
-        + SKILL_BODY.format(name=name, shared_guardrails="\n".join(SHARED_GUARDRAILS))
+        + SKILL_BODY.format(name=name, shared_guardrails=shared)
         + extra
     )
 

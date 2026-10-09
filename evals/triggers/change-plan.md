@@ -22,3 +22,4 @@ Synthetic prompts. Run them as described in README.md.
 
 - 1. With argument: `/change-plan add CSV export to the reports page` -> Produces a plan only, nothing implemented, ending with Next step /change-review.
 - 2. Without argument: `/change-plan` -> Asks what change to plan before doing anything else.
+- 3. Plan file: every `/change-plan` run writes its plan to `docs/plans/YYYY-MM-DD-<slug>.md` and reports the path.

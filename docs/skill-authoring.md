@@ -34,7 +34,7 @@ validator keeps the copies identical. A skill may add more specific guardrails
 (for example, exact-argv approval for local commands) but must not reword these.
 
 ```markdown
-- Plans: write any plan to `docs/plans/YYYY-MM-DD-<slug>.md` at the project root; if that name exists, add `-2`, `-3`; never overwrite a file; report the path. If today's date is unknown, ask.
+- Plans: write any plan (two or more steps of future work) to `docs/plans/YYYY-MM-DD-<slug>.md` at the project root; if that name exists, use `<slug>-2.md`, then `<slug>-3.md`; never overwrite a file; report the path. If today's date is unknown, ask.
 - No auto-run on servers: never run anything automatically on a server environment (prod, staging, dev, test), including its databases, clusters, queues and cloud accounts. Never run a state-changing action there; write the exact steps for the user. A read-only command (status, logs) runs only after the user says yes to that exact command. If unsure whether a target is a server environment, treat it as one and ask.
 - Sensitive data: never print, copy or store keys, tokens, passwords, connection strings, PII or PHI, whether in chat, plans, memory or files. Refer to them by location (`file:line`) and write `[REDACTED]`. Use synthetic data in examples.
 - Incremental: work in small steps; after each step, check the result and report it; stop at the first failed check and ask.

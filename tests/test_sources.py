@@ -217,6 +217,23 @@ class RemoteInstallTest(TempDirTest):
         entry = self.lock()["demo"]
         self.assertEqual((entry["ref"], entry["path"], entry["commit"]), (sha, "pkg/team", sha))
 
+    def test_remote_skill_without_shared_guardrails_installs(self):
+        files = {"skills/plain/SKILL.md": skill_text("plain", shared_guardrails=False)}
+        repo = make_repo(self.tmp / "plain-remote", files)
+        url = f"file://{repo}"
+        code, out, _ = self.install(url=url, skills=("plain",))
+        self.assertEqual((code, "preview" in out), (EXIT_OK, True))
+        code, out, _ = self.install("--yes", url=url, skills=("plain",))
+        self.assertEqual(code, EXIT_OK, out)
+        self.assertTrue((self.project / ".claude/skills/plain/SKILL.md").is_file())
+        (repo / "skills/plain/SKILL.md").write_text(
+            skill_text("plain", extra="\nMore.\n", shared_guardrails=False)
+        )
+        commit_all(repo)
+        argv = ["update", "plain", "--project-dir", str(self.project), "--yes"]
+        code, out, _ = run_cli(argv)
+        self.assertEqual((code, "updated" in out), (EXIT_OK, True), out)
+
     def test_remote_update_needs_yes_and_shows_commits(self):
         self.install("--yes")
         (self.repo / "skills/demo/references/a.md").write_text("changed\n")

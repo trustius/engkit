@@ -44,6 +44,8 @@ unnecessary work. Case-specific:
    (backup/retention noted).
 6. Open question: what `region` value existing users get (no source given) — must be asked,
    not invented.
+7. The `/change-plan` run writes its plan to `docs/plans/YYYY-MM-DD-<slug>.md` and
+   reports the path.
 
 ## Disallowed hallucinations
 

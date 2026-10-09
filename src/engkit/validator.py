@@ -31,9 +31,10 @@ REQUIRED_SECTIONS = (
 # Verbatim lines every skill repeats under "## Guardrails" (installed skills must be
 # self-contained, so they cannot import a shared file). Quoted in docs/skill-authoring.md.
 SHARED_GUARDRAILS = (
-    "- Plans: write any plan to `docs/plans/YYYY-MM-DD-<slug>.md` at the project root; if that"
-    " name exists, add `-2`, `-3`; never overwrite a file; report the path. If today's date is"
-    " unknown, ask.",
+    "- Plans: write any plan (two or more steps of future work) to"
+    " `docs/plans/YYYY-MM-DD-<slug>.md` at the project root; if that name exists, use"
+    " `<slug>-2.md`, then `<slug>-3.md`; never overwrite a file; report the path. If today's"
+    " date is unknown, ask.",
     "- No auto-run on servers: never run anything automatically on a server environment (prod,"
     " staging, dev, test), including its databases, clusters, queues and cloud accounts. Never run"
     " a state-changing action there; write the exact steps for the user. A read-only command"
@@ -121,26 +122,31 @@ def _check_length(skill: Skill) -> list[Issue]:
     return [Issue(skill.skill_md, message)]
 
 
-def validate_skill(skill: Skill, containment_root: Path) -> list[Issue]:
+def validate_skill(
+    skill: Skill, containment_root: Path, *, require_shared_guardrails: bool = False
+) -> list[Issue]:
     issues = _check_names(skill)
     issues.extend(_check_metadata(skill))
     issues.extend(_check_sections(skill))
     issues.extend(_check_length(skill))
-    issues.extend(_check_shared_guardrails(skill))
+    if require_shared_guardrails:
+        issues.extend(_check_shared_guardrails(skill))
     issues.extend(_check_links(skill))
     issues.extend(_check_tree(skill.path, containment_root))
     return issues
 
 
+GUARDRAILS_RE = re.compile(r"^## Guardrails\s*$", re.MULTILINE)
+
+
 def _guardrail_lines(body: str) -> list[str]:
-    section = body.split("\n## Guardrails\n", 1)
-    if len(section) < 2:
+    match = GUARDRAILS_RE.search(body)
+    if match is None:
         return []
-    return section[1].split("\n## ", 1)[0].splitlines()
+    return re.split(r"^## ", body[match.end() :], maxsplit=1, flags=re.MULTILINE)[0].splitlines()
 
 
-def _check_shared_guardrails(skill: Skill) -> list[Issue]:
-    lines = _guardrail_lines(skill.body)
+def _shared_guardrail_issues(lines: list[str], skill_md: Path) -> list[Issue]:
     issues = []
     for shared in SHARED_GUARDRAILS:
         if shared in lines:
@@ -148,7 +154,20 @@ def _check_shared_guardrails(skill: Skill) -> list[Issue]:
         label = shared.split(":", 1)[0] + ":"
         state = "altered" if any(line.startswith(label) for line in lines) else "missing"
         message = f"{state} shared guardrail '{label[2:]}' under '## Guardrails' (copy it verbatim)"
-        issues.append(Issue(skill.path / "SKILL.md", message))
+        issues.append(Issue(skill_md, message))
+    return issues
+
+
+def _check_shared_guardrails(skill: Skill) -> list[Issue]:
+    skill_md = skill.path / "SKILL.md"
+    if len(GUARDRAILS_RE.findall(skill.body)) > 1:
+        return [Issue(skill_md, "'## Guardrails' appears more than once")]
+    lines = _guardrail_lines(skill.body)
+    issues = _shared_guardrail_issues(lines, skill_md)
+    first = [line for line in lines if line.strip()][: len(SHARED_GUARDRAILS)]
+    if not issues and first != list(SHARED_GUARDRAILS):
+        message = "shared guardrails must be the first lines under '## Guardrails', in order"
+        issues.append(Issue(skill_md, message))
     return issues
 
 
@@ -231,11 +250,15 @@ def _check_tree(skill_dir: Path, containment_root: Path) -> list[Issue]:
 
 def validate(skills_dir: Path, name: str | None = None) -> CatalogResult:
     """Validate all skills (or one); symlinks may not leave ``skills_dir``."""
-    return validate_dir(skills_dir, skills_dir, name)
+    return validate_dir(skills_dir, skills_dir, name, require_shared_guardrails=True)
 
 
 def validate_dir(
-    skills_dir: Path, containment_root: Path, name: str | None = None
+    skills_dir: Path,
+    containment_root: Path,
+    name: str | None = None,
+    *,
+    require_shared_guardrails: bool = False,
 ) -> CatalogResult:
     """Validate skills under ``skills_dir``; symlinks must stay inside ``containment_root``."""
     catalog = discover(skills_dir)
@@ -253,5 +276,8 @@ def validate_dir(
             catalog_issues.append(Issue(skill_path, "unknown skill"))
     result = CatalogResult(skills=selected, issues=catalog_issues)
     for skill in selected:
-        result.issues.extend(validate_skill(skill, containment_root))
+        issues = validate_skill(
+            skill, containment_root, require_shared_guardrails=require_shared_guardrails
+        )
+        result.issues.extend(issues)
     return result

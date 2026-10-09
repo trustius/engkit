@@ -125,9 +125,9 @@ def _failures(platform_ids, scope, name, status, detail, exit_code=None) -> list
     ]
 
 
-def _validated(base: Path, containment: Path, name: str, label: str):
+def _validated(base: Path, containment: Path, name: str, label: str, builtin: bool = False):
     """Return (skill path, content snapshot, problem); problem is empty when valid."""
-    report = validate_dir(base, containment, name)
+    report = validate_dir(base, containment, name, require_shared_guardrails=builtin)
     errors = [issue.format() for issue in report.issues if issue.level == "error"]
     if errors or not report.skills:
         return None, {}, f"{label} failed validation: " + "; ".join(errors or ["unknown skill"])
@@ -157,7 +157,9 @@ def install_dir(
 ) -> list[InstallResult]:
     """Install one skill to each requested platform and record it in the lock."""
     ids = [item.id for item in platforms.expand_target(target)]
-    path, snapshot, problem = _validated(skills_dir, containment_root, name, "source")
+    path, snapshot, problem = _validated(
+        skills_dir, containment_root, name, "source", origin["source"] == "builtin"
+    )
     if problem:
         return _failures(ids, scope, name, ERROR, problem)
     try:
@@ -582,7 +584,9 @@ def _update_name(run: _UpdateRun, name: str) -> list[InstallResult]:
         )
         return _failures(managed, run.scope, name, ERROR, detail)
     base, containment, commit = _new_source(entry, run)
-    path, snapshot, problem = _validated(base, containment, name, "upstream")
+    path, snapshot, problem = _validated(
+        base, containment, name, "upstream", entry["source"] == "builtin"
+    )
     if problem:
         return _failures(managed, run.scope, name, ERROR, problem)
     if _wants_confirmation(entry, snapshot, run.yes):
