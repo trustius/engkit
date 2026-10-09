@@ -1,7 +1,7 @@
 import os
 import re
 
-from engkit.validator import validate, validate_name
+from engkit.validator import SHARED_GUARDRAILS, validate, validate_name
 from tests.helpers import SKILLS_DIR, TempDirTest, skill_text
 
 
@@ -10,6 +10,34 @@ def errors(result):
 
 
 class ValidatorTest(TempDirTest):
+    def test_shared_guardrails_present_is_valid(self):
+        root = self.make_skills_dir({"guarded": skill_text("guarded")})
+        self.assertEqual(errors(validate(root)), [])
+
+    def test_missing_shared_guardrail_is_an_error(self):
+        text = skill_text("unguarded").replace(SHARED_GUARDRAILS[1] + "\n", "")
+        root = self.make_skills_dir({"unguarded": text})
+        found = [message for message in errors(validate(root)) if "shared guardrail" in message]
+        self.assertEqual(len(found), 1, found)
+        self.assertIn("missing", found[0])
+        self.assertIn("No auto-run on servers", found[0])
+
+    def test_altered_shared_guardrail_is_an_error(self):
+        altered = SHARED_GUARDRAILS[2].replace("never print", "avoid printing")
+        text = skill_text("reworded").replace(SHARED_GUARDRAILS[2], altered)
+        root = self.make_skills_dir({"reworded": text})
+        found = [message for message in errors(validate(root)) if "shared guardrail" in message]
+        self.assertEqual(len(found), 1, found)
+        self.assertIn("altered", found[0])
+        self.assertIn("Sensitive data", found[0])
+
+    def test_shared_guardrail_outside_guardrails_section_does_not_count(self):
+        text = skill_text("misplaced").replace(SHARED_GUARDRAILS[3] + "\n", "")
+        text = text.replace("## Objective\n", "## Objective\n" + SHARED_GUARDRAILS[3] + "\n")
+        root = self.make_skills_dir({"misplaced": text})
+        found = [message for message in errors(validate(root)) if "shared guardrail" in message]
+        self.assertEqual(len(found), 1, found)
+
     def test_valid_skill(self):
         root = self.make_skills_dir({"good-skill": skill_text("good-skill")})
         self.assertEqual(errors(validate(root)), [])

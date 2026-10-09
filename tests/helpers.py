@@ -11,6 +11,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+from engkit.validator import SHARED_GUARDRAILS
+
 REPO = Path(__file__).resolve().parent.parent
 SKILLS_DIR = REPO / "src" / "engkit" / "skills"
 
@@ -36,6 +38,7 @@ None.
 Report verified fact, plausible hypothesis and untested assumption.
 
 ## Guardrails
+{shared_guardrails}
 No edits.
 """
 
@@ -45,7 +48,7 @@ def skill_text(
 ) -> str:
     return (
         f"---\nname: {name}\ndescription: {description}\n---\n"
-        + SKILL_BODY.format(name=name)
+        + SKILL_BODY.format(name=name, shared_guardrails="\n".join(SHARED_GUARDRAILS))
         + extra
     )
 

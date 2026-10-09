@@ -126,8 +126,29 @@ def validate_skill(skill: Skill, containment_root: Path) -> list[Issue]:
     issues.extend(_check_metadata(skill))
     issues.extend(_check_sections(skill))
     issues.extend(_check_length(skill))
+    issues.extend(_check_shared_guardrails(skill))
     issues.extend(_check_links(skill))
     issues.extend(_check_tree(skill.path, containment_root))
+    return issues
+
+
+def _guardrail_lines(body: str) -> list[str]:
+    section = body.split("\n## Guardrails\n", 1)
+    if len(section) < 2:
+        return []
+    return section[1].split("\n## ", 1)[0].splitlines()
+
+
+def _check_shared_guardrails(skill: Skill) -> list[Issue]:
+    lines = _guardrail_lines(skill.body)
+    issues = []
+    for shared in SHARED_GUARDRAILS:
+        if shared in lines:
+            continue
+        label = shared.split(":", 1)[0] + ":"
+        state = "altered" if any(line.startswith(label) for line in lines) else "missing"
+        message = f"{state} shared guardrail '{label[2:]}' under '## Guardrails' (copy it verbatim)"
+        issues.append(Issue(skill.path / "SKILL.md", message))
     return issues
 
 
