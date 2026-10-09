@@ -4,40 +4,69 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Current state and commands
 
-M0–M6C are implemented (see `docs/test-results.md`). The toolkit is Python ≥3.10 with one runtime dependency, PyYAML (`docs/adr/0001-language-and-distribution.md`). It is not yet a git repository. Agent-level platform checks and eval runs are still pending.
+engkit is a Python ≥3.10 package with one runtime dependency, PyYAML. The
+current direction, including what was removed and why, is in
+`ENHANCEMENT_PLAN.md`. Read it before starting a task. Older milestone sections
+in `IMPLEMENTATION_PLAN.md` are partly superseded, as noted at its top.
 
 ```bash
-# offline dev setup (local Python 3.10 already has PyYAML; the venv's own setuptools was removed so the system 80.9 builds wheels)
-~/.pyenv/versions/3.10.12/bin/python3 -m venv --system-site-packages .venv
-.venv/bin/pip install --no-index --no-deps --no-build-isolation -e .
+python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"   # needs network for PyYAML and ruff
 
-.venv/bin/python -m unittest discover -s tests -t .              # full suite (includes a wheel build)
-.venv/bin/python -m unittest tests.test_generation                # one module
+.venv/bin/python -m unittest discover -s tests -t .          # full suite (includes a wheel build)
+.venv/bin/python -m unittest tests.test_installer            # one module
 .venv/bin/python -m unittest tests.test_installer.InstallerTest.test_conflict_leaves_existing_untouched   # one test
-ENGKIT_SKIP_DIST=1 .venv/bin/python -m unittest discover -s tests -t .   # skip the distribution test
-.venv/bin/engkit validate                                         # skill lint
-python3 -m pip wheel . --no-deps --no-index --no-build-isolation -w dist # build (use an interpreter with setuptools>=70.1)
+ENGKIT_SKIP_DIST=1 .venv/bin/python -m unittest discover -s tests -t .   # skip the wheel test
+
+.venv/bin/ruff check src tests                               # lint
+.venv/bin/ruff format src tests                              # format (check with --check)
+.venv/bin/engkit validate                                    # skill lint
 ```
 
-pytest also works and is limited to `tests/` via pyproject. Never let a test runner collect `evals/`: fixtures are inert data.
+Layout: `src/engkit/` contains `cli` (argument parsing and output only),
+`catalog`, `validator`, `platforms` (the only place that maps platform and scope
+to paths), `installer`, `sources`, `lockfile`, `memory`, `fsutil`, `resources`,
+`doctor` and `errors`. The only packaged resources are `skills/`, copied into
+the built package by `setup.py`. Design decisions are in `docs/adr/`. Pytest
+also works and is limited to `tests/` by `pyproject.toml`.
 
-Layout: `src/engkit/` contains `cli`, `catalog`, `validator`, `platforms`, `installer`, `fsutil`, `resources`, `profiles`, `packs`, `detection`, `resolution`, `define`, `generation` and `doctor`. Resources live at the repo root (`skills/`, `packs/`, `schemas/`, `templates/`, `stacks/`) and are copied into `engkit/_resources/` at build time by `setup.py`. Design decisions are in `docs/adr/`.
+Commands:
 
-Read `IMPLEMENTATION_PLAN.md` before starting any task. After a milestone-sized change, report the files changed, the commands run and their results, any unresolved risks, and the next tasks.
+- `engkit list [--json] [--source URL [--ref REF] [--path DIR]]`
+- `engkit validate [NAME]`
+- `engkit install NAME --target {claude,codex,all} [--project-dir P | --global]`
+- `engkit install --source URL [--ref REF] [--path DIR] --skill A [--skill B] --target T [--project-dir P | --global] [--yes]`
+- `engkit update [NAME] [--target T] [--project-dir P | --global] [--yes]`
+- `engkit uninstall NAME --target T [--project-dir P | --global]`
+- `engkit doctor [--target T] [--project-dir P] [--project-only] [--json]`
+- `engkit memory init [--project-dir P]`
+- `engkit memory validate [--project-dir P]`
+
+Read `IMPLEMENTATION_PLAN.md` and `ENHANCEMENT_PLAN.md` before starting any task.
+After a milestone-sized change, report the files changed, the commands run and
+their results, any unresolved risks, and the next tasks.
 
 ## What engkit is
 
-engkit is a portable library of engineering-workflow skills (`SKILL.md`) plus an offline, local CLI for **Claude Code and OpenAI Codex**. The MVP includes `list`, `validate`, `install`, `doctor`, `project inspect`, `stack validate`, `project define` and `project generate`. It is not an agent runtime, an MCP integration or an LLM client.
+engkit is a portable library of engineering-workflow skills (`SKILL.md`) plus a
+small local CLI for **Claude Code and OpenAI Codex**. It installs skills from
+the built-in `skills/` directory or from a git source, keeps a lockfile, and
+manages a local, platform-neutral project memory. It is not an agent runtime,
+an MCP integration or an LLM client.
 
-Four concerns stay separate (§14.1):
-1. **Core skills** (`skills/<name>/SKILL.md`): stack-neutral workflows. The MVP skills are `systematic-debugging`, `code-review` and `implementation-planning`, plus `project-discovery` and `stack-selection` in M6.
-2. **Project profile** (`.engkit/project.yaml`, `stacks/<id>.yaml`): observed or declared components, commands and evidence. The schemas are versioned.
-3. **Technology packs**: bundled `packs/` and project-local `.engkit/packs/<id>/pack.yaml`; optional, declarative and data-only. Duplicate IDs are errors, not overrides. Dependencies resolve locally by exact version; no executable plugins or network lookup.
-4. **Platform adapters** (`platforms` module): the only place that maps `(platform, scope, root)` to destination paths.
+Concerns that stay separate:
 
-Planned CLI modules: `cli` (thin arg parsing and output only), `catalog` (discovery and duplicate rejection), `validator` (no side effects), `installer`, `platforms`. M6 adds profiles, schemas, detection, packs, resolution and generation.
+1. **Skills** (`skills/<name>/SKILL.md`): stack-neutral workflows. Built-in
+   skills: `systematic-debugging`, `change-review`, `implementation-planning`,
+   `project-discovery`, `stack-selection`, `project-memory`.
+2. **Platform adapters** (`platforms.py`): the only place that maps
+   `(platform, scope, root)` to destination paths.
+3. **Lockfile** (`skills.lock.json`): what was installed, from where, at which
+   commit, with which content hash.
+4. **Project memory** (`.engkit/memory/`): local notes shared by the agents of
+   one project. See the invariants below.
 
-Install destinations: verify these against current official docs and record any differences in `docs/compatibility.md`.
+Install destinations (verify against current official docs and record any
+difference in `docs/compatibility.md`):
 
 | Scope | Claude Code | Codex |
 |---|---|---|
@@ -46,22 +75,42 @@ Install destinations: verify these against current official docs and record any 
 
 ## Invariants (must not be violated)
 
-- **Single canonical source:** `skills/<name>/` is authoritative. Never commit per-platform copies, and keep platform-specific behavior in adapters only.
-- **Skill names** use lower-case ASCII letters, digits and hyphens, and must equal the directory name. Reject traversal, absolute paths, and symlinks that escape the toolkit root.
-- **Install is copy-based, staged and atomic:** copy to a temp sibling, validate, then publish using the no-replace concurrency contract in §5. A preflight check followed by an unconditional rename is insufficient. An identical destination reports `already installed`; a differing one reports `conflict`; an active reservation may report retryable `busy`. Reject symlinked managed destination parents and clean only operation-owned staging. Never overwrite installed skills in the MVP (installation `--force` comes later).
-- **Packaged resources are independent of cwd:** bundle skills, built-in packs, schemas, templates and shipped stack definitions. Test the non-editable built distribution from a separate project without source-checkout access, including custom-pack generation.
+- **Single canonical source:** `skills/<name>/` is authoritative. Never commit per-platform copies. Keep platform-specific behavior in `platforms.py` only.
+- **Skill names** use lower-case ASCII letters, digits and hyphens, must equal the directory name, and must not collide with a platform built-in skill name (`BUILTIN_SKILL_NAMES` in `platforms.py`). Reject traversal, absolute paths, and symlinks that escape the toolkit root.
+- **Install is copy-based, staged and atomic:** copy to a temp sibling, validate, then publish with the no-replace contract in ADR 0002. A preflight check followed by an unconditional rename is insufficient. An identical destination reports `already installed`; a differing one reports `conflict` (exit 3) and is left untouched. Reject symlinked managed destination parents and clean only operation-owned staging.
+- **Never overwrite or delete a modified install.** `update` and `uninstall` act only on lock-managed installs whose content hash equals the lock. A modified install is a conflict and is not touched.
+- **Remote installs need a preview and `--yes`.** Without `--yes`, `install --source` prints the URL, ref, resolved commit, file list and executable files and writes nothing. `update` of a git-sourced entry shows old→new commit and needs `--yes`. Pin `--ref <commit>` to guarantee the previewed content.
+- **Network only in `list --source`, `install --source` and `update`** (git-sourced entries). These call the system `git` with a shallow fetch, no submodules, hooks disabled, `GIT_TERMINAL_PROMPT=0` and a timeout. Every other command is offline. Do not add network access anywhere else without explicit user permission.
+- **Memory is local, uncommitted and secret-free.** `.engkit/memory/` has its own `.gitignore` (`*`). Never store secrets, credentials or personal data. `memory validate` warns on secret-like strings; it does not prove absence.
+- **Memory is not a log.** Do not record the same fact in Claude Code auto memory and in engkit memory. Record only what code and git history cannot show.
 - **Default scope is project** (`--project-dir` or cwd). Global scope requires `--global`.
-- **Never execute** scripts bundled in skills, or project manifests/commands during detection or generation. Commands in profiles are argv arrays that are only rendered.
-- **Never auto-modify** existing `CLAUDE.md`, `AGENTS.md`, IDE configs or git hooks. Generated output goes to `.engkit/generated/` and must be byte-for-byte deterministic. Changed output conflicts by default. `project generate --replace-generated` explicitly replaces only that bundle after a verified backup; `--recover-generated` restores an interrupted transaction without generating new output. Backup, lock, staging and journal paths under `.engkit/` are the limited exceptions (§14.6). Preserve unrelated files; dry-run writes nothing. `doctor` is read-only and never accepts incomplete output as fresh.
-- **Tests use temp home and project dirs only.** Never touch the real `~/.claude` or `~/.codex`.
-- **Use a real YAML parser** (small, pinned dependency if needed). Do not hand-roll YAML parsing. Otherwise prefer the standard library.
-- **No network, telemetry or package installs** without explicit permission.
+- **Never auto-modify** existing `CLAUDE.md`, `AGENTS.md`, IDE configs or git hooks. engkit prints snippets; the user adds them.
+- **Never execute** scripts bundled in skills. Skill files are read and copied, never run.
+- **Tests use temp home and project dirs only.** Never touch the real `~/.claude`, `~/.codex` or `~/.engkit`.
+- **Use a real YAML parser** (`yaml.safe_load` / `safe_dump`). Do not hand-roll YAML. Otherwise prefer the standard library. PyYAML is the only runtime dependency.
+- **No new dependencies, network calls, telemetry or package installs** without explicit user approval.
 - **Honest reporting:** do not claim a test passed unless it ran. When Claude Code or Codex cannot be run locally, mark end-to-end checks as pending. Evals must never contain invented scores, and fixtures must be synthetic.
 
-## Skill authoring conventions
+## Coding rules
 
-Every `SKILL.md` has `name` and `description` frontmatter and these sections: when to use (including out-of-scope cases), objective, inputs, workflow, output contract, guardrails. Keep the body short. Put deep material in `references/`, loaded only when relevant. Outputs must distinguish **verified fact**, **plausible hypothesis** and **untested assumption**. No skill may implicitly authorize edits, production access or destructive actions. Technology names belong only in optional examples, references or packs.
+- Full names, no abbreviations, except `i`, `path` and `exc`.
+- Functions ≤40 lines and nesting ≤2 levels. Use early returns.
+- No nested comprehensions and no nested ternaries.
+- Comments only for non-obvious *why*. Docstrings are one line at most.
+- Lines ≤100 characters. `ruff check` and `ruff format --check` must pass on `src` and `tests`.
+- No abstraction without two real uses.
+- Stdlib first. A new dependency needs user approval.
+- Every behavior change has a test. Every bug fix has a test that fails before the fix.
 
-All five skills use the optional project-context hook in §6.1.1: locate context in the target project, check freshness when possible, select components by task paths, and load only relevant references. Missing/stale context falls back to generic workflows; when the CLI is unavailable, freshness stays unverified and facts must be checked against current files. Keep commands scoped per component and never interpret documented commands as execution permission. Do not implicitly regenerate context.
+## Skill authoring contract
 
-Final delivery includes at least ten synthetic evaluation cases (two per skill), distribution and recovery tests, and recorded platform/context-consumption smoke tests or explicit pending status when unavailable.
+Each `SKILL.md` must pass `engkit validate` (see `docs/skill-authoring.md`):
+
+- Frontmatter has `name` (equal to the directory name) and `description` (≤1024 characters).
+- At most 120 lines.
+- Sections in this order: `When to use`, `When to ask`, `Objective`, `Inputs`, `Workflow`, `Output contract`, `Guardrails`, and optionally `References`.
+- Outputs distinguish **verified fact**, **plausible hypothesis** and **untested assumption**.
+- Memory hook: at task start, read `.engkit/memory/INDEX.md` if it exists, open only the entries that look relevant, and verify them against the code before relying on them. Do not write memory unless the skill's workflow says so.
+- No skill implicitly authorizes edits, production access or destructive actions.
+- Put depth in `references/` and load it only when relevant.
+- Add trigger evals in `evals/triggers/` for each skill. Other cases live in `evals/` (see `evals/README.md`). Never let a test runner collect `evals/`.

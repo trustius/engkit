@@ -1,6 +1,6 @@
 # ADR 0003: Generation transactions, locking, backup and recovery
 
-- Status: accepted (M6C)
+- Status: superseded by ENHANCEMENT_PLAN.md (M6 removed, 2026-10-09)
 
 ## Layout (all under `<project>/.engkit/`)
 

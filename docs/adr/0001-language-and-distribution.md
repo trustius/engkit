@@ -5,9 +5,8 @@
 
 ## Context
 
-engkit needs a small, offline, cross-platform CLI that parses YAML, copies
-directory trees safely and ships data resources (skills, packs, schemas,
-templates, stacks). The choice must not constrain the stacks of projects that
+engkit needs a small, cross-platform CLI that parses YAML, copies directory
+trees safely and ships data resources (skills). The choice must not constrain the stacks of projects that
 consume the skills; those projects never need engkit's language.
 
 ## Options considered
@@ -30,25 +29,26 @@ OS no-replace rename primitives; PyYAML is the de facto safe YAML parser.
 **Runtime dependency policy:** exactly one third-party runtime dependency,
 `PyYAML>=6.0,<7`, used only through `yaml.safe_load` / `yaml.safe_dump`. No
 other runtime dependencies without a new ADR. Tests use only `unittest`
-(pytest also works but is not required). TOML manifest keys are parsed with
-`tomllib` on Python 3.11+. On 3.10, TOML key rules are skipped with an
-informational diagnostic and file-presence rules still apply.
+(pytest also works but is not required).
+
+**Network exception (ADR 0004):** `list --source`, `install --source` and
+`update` of a git-sourced entry call the system `git`. All other commands stay
+offline.
 
 ## Distribution and resource lookup
 
-- Canonical sources stay at the repository root: `skills/`, `packs/`,
-  `schemas/`, `templates/`, `stacks/`. Nothing is duplicated in source control.
-- `setup.py` subclasses `build_py` to copy those directories into
-  `engkit/_resources/` inside the built package. The wheel is the release
-  artifact.
-- `engkit.resources.resource_root()` returns `<package>/_resources` when all
-  five directories exist. Otherwise, for editable or `PYTHONPATH=src`
+- The canonical source stays at the repository root: `skills/`. Nothing is
+  duplicated in source control.
+- `setup.py` subclasses `build_py` to copy `skills/` into `engkit/_resources/`
+  inside the built package. The wheel is the release artifact.
+- `engkit.resources.resource_root()` returns `<package>/_resources` when
+  `skills/` exists there. Otherwise, for editable or `PYTHONPATH=src`
   development, it falls back to the checkout located relative to the module
-  file (requires `pyproject.toml` next to the resources). **The current working
+  file (requires `pyproject.toml` next to `skills/`). **The current working
   directory is never consulted.** If neither location is found, the CLI fails
   with exit code 4.
-- Project resources (`.engkit/project.yaml`, `.engkit/packs/`) resolve against
-  the explicit `--project-dir` (or cwd), never the resource root.
+- Project memory (`.engkit/memory/`) resolves against the explicit
+  `--project-dir` (or cwd), never the resource root.
 
 ## Non-editable distribution smoke test
 

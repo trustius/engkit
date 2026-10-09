@@ -1,5 +1,7 @@
 # Engineering Skills Toolkit — Implementation Plan
 
+> **Note (2026-10-09):** Sections on M6 (§14.x), generated project context and technology packs are superseded by `ENHANCEMENT_PLAN.md`. Those features were removed. Use `ENHANCEMENT_PLAN.md` as the current direction.
+
 > **Audience:** Claude Code (implementation agent) and the engineer overseeing it  
 > **Working name:** `engkit`  
 > **Status:** Revised after design review; compatibility and runtime decisions remain M0 gates  
