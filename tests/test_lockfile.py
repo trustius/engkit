@@ -11,13 +11,26 @@ ENTRY = {
     "ref": None,
     "path": None,
     "commit": None,
-    "content_sha256": "x",
+    "content_sha256": "a" * 64,
     "targets": ["claude"],
 }
 CORRUPT = (
     "{not json",
     '{"lock_version": 2, "skills": {}}',
     '{"lock_version": 1, "skills": {"a": {}}}',
+)
+GOOD = dict(ENTRY)
+BAD_ENTRIES = (
+    ("../x", {}),
+    ("Bad_Name", {}),
+    ("demo", {"source": 5}),
+    ("demo", {"ref": 5}),
+    ("demo", {"path": []}),
+    ("demo", {"commit": 7}),
+    ("demo", {"content_sha256": "x"}),
+    ("demo", {"content_sha256": "G" * 64}),
+    ("demo", {"targets": ["vim"]}),
+    ("demo", {"targets": "claude"}),
 )
 
 
@@ -62,6 +75,33 @@ class LockfileTest(TempDirTest):
                 with self.assertRaises(EngkitError), lockfile.transaction(self.root):
                     pass
                 self.assertEqual(self.path.read_text(), text)
+
+    def test_invalid_entries_are_rejected_on_read(self):
+        self.path.parent.mkdir()
+        for name, change in BAD_ENTRIES:
+            text = json.dumps({"lock_version": 1, "skills": {name: {**GOOD, **change}}})
+            self.path.write_text(text)
+            with self.subTest(name=name, change=change):
+                with self.assertRaises(EngkitError):
+                    lockfile.read(self.root)
+                with self.assertRaises(EngkitError), lockfile.transaction(self.root):
+                    pass
+                self.assertEqual(self.path.read_text(), text)
+
+    def test_valid_entries_pass_validation(self):
+        self.path.parent.mkdir()
+        entry = {**GOOD, "ref": "main", "path": "skills", "commit": "c" * 40}
+        self.path.write_text(json.dumps({"lock_version": 1, "skills": {"demo": entry}}))
+        self.assertEqual(lockfile.read(self.root)["demo"], entry)
+
+    def test_symlinked_lock_file_is_refused(self):
+        target = self.tmp / "victim.lock"
+        target.write_text("keep")
+        (self.root / ".engkit").mkdir()
+        os.symlink(target, self.root / ".engkit/skills.lock.json.lock")
+        with self.assertRaises(EngkitError), lockfile.transaction(self.root):
+            pass
+        self.assertEqual(target.read_text(), "keep")
 
     def test_symlinked_engkit_dir_is_refused(self):
         elsewhere = self.tmp / "elsewhere"

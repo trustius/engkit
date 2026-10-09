@@ -57,12 +57,11 @@ target platform, so an installed skill cannot shadow a built-in one. The lists a
   listing of a Claude Code 2.1.295 session on 2026-10-09. It contains
   `code-review`, `security-review`, `init`, `simplify`, `loop`, `schedule`,
   `run`, `update-config`, `keybindings-help`, `fewer-permission-prompts`,
-  `claude-api`, `plugin-authoring`, `workflow-authoring`, `review` and
-  `skill-creator`. Built-in skills can change between releases, so re-observe
+  `claude-api`, `plugin-authoring` and `workflow-authoring`. Built-in skills can change between releases, so re-observe
   this list on each release.
-- **Codex (unverified):** only `openai-docs` was seen in the Codex binary
-  strings. The code also lists `skill-creator` and `skill-installer`. Neither
-  was confirmed in a session, so treat the Codex list as an assumption.
+- **Codex (partly verified):** the list contains only `openai-docs`, seen in the
+  Codex 0.144.1 binary strings. Other Codex built-ins may exist; no Codex
+  session was run to list them.
 
 ### Why `code-review` was renamed
 

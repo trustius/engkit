@@ -8,6 +8,8 @@ from pathlib import Path
 
 import yaml
 
+from engkit import fsutil
+
 # \Z, not $: "$" would accept a trailing newline.
 NAME_RE = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*\Z")
 NAME_MAX = 64
@@ -22,6 +24,10 @@ class Skill:
     metadata: dict
     body: str
 
+    @property
+    def skill_md(self) -> Path:
+        return self.path / "SKILL.md"
+
 
 @dataclass
 class Issue:
@@ -30,7 +36,7 @@ class Issue:
     level: str = "error"  # error | warning
 
     def format(self) -> str:
-        return f"{self.level}: {self.path}: {self.message}"
+        return fsutil.printable(f"{self.level}: {self.path}: {self.message}")
 
 
 @dataclass
@@ -73,10 +79,6 @@ def split_frontmatter(text: str) -> tuple[dict, str]:
     return data, body
 
 
-def skills_dir(root: Path) -> Path:
-    return root / "skills"
-
-
 def _load_skill(entry: Path, issues: list[Issue]) -> Skill | None:
     skill_md = entry / "SKILL.md"
     if skill_md.is_symlink():
@@ -84,6 +86,9 @@ def _load_skill(entry: Path, issues: list[Issue]) -> Skill | None:
         return None
     if not skill_md.is_file():
         issues.append(Issue(skill_md, "missing SKILL.md"))
+        return None
+    if skill_md.stat().st_size > fsutil.MAX_SKILL_FILE_BYTES:
+        issues.append(Issue(skill_md, "SKILL.md is larger than 1 MiB"))
         return None
     try:
         metadata, body = split_frontmatter(skill_md.read_text(encoding="utf-8"))
@@ -120,7 +125,7 @@ def _reject_duplicates(result: CatalogResult) -> None:
 
 def discover(root: Path) -> CatalogResult:
     """Deterministically enumerate ``root/skills/*/SKILL.md``; duplicate names are all excluded."""
-    return discover_dir(skills_dir(root))
+    return discover_dir(root / "skills")
 
 
 def discover_dir(base: Path) -> CatalogResult:
@@ -142,11 +147,3 @@ def discover_dir(base: Path) -> CatalogResult:
             result.skills.append(skill)
     _reject_duplicates(result)
     return result
-
-
-def find(root: Path, name: str) -> tuple[Skill | None, CatalogResult]:
-    result = discover(root)
-    for skill in result.skills:
-        if skill.name == name and skill.path.name == name:
-            return skill, result
-    return None, result

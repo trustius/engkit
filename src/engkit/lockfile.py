@@ -5,11 +5,12 @@ from __future__ import annotations
 import contextlib
 import json
 import os
-import uuid
+import re
 from pathlib import Path
 
-from engkit import fsutil
+from engkit import fsutil, platforms
 from engkit.errors import EXIT_FAILURE, EXIT_IO, EngkitError
+from engkit.validator import validate_name
 
 try:
     import fcntl
@@ -18,6 +19,7 @@ except ImportError:  # Windows
 
 LOCK_NAME = "skills.lock.json"
 ENTRY_KEYS = {"source", "ref", "path", "commit", "content_sha256", "targets"}
+SHA256_RE = re.compile(r"[0-9a-f]{64}\Z")
 
 
 def lock_file(root: Path) -> Path:
@@ -29,21 +31,43 @@ def digest(snapshot: dict[str, str]) -> str:
     return fsutil.sha256_bytes(lines.encode())
 
 
+def require_locking() -> None:
+    if fcntl is None:
+        raise EngkitError("lockfile updates are unsupported on this platform", EXIT_FAILURE)
+
+
+def _entry_problem(name: str, entry: object) -> str:
+    """Describe what is wrong with one entry, or return an empty string."""
+    message = validate_name(name)
+    if message:
+        return f"invalid skill name: {message}"
+    if not isinstance(entry, dict) or not set(entry) >= ENTRY_KEYS:
+        return "malformed entry"
+    if not isinstance(entry["source"], str):
+        return "source must be a string"
+    for key in ("ref", "path", "commit"):
+        if entry[key] is not None and not isinstance(entry[key], str):
+            return f"{key} must be a string or null"
+    if not isinstance(entry["content_sha256"], str) or not SHA256_RE.match(entry["content_sha256"]):
+        return "content_sha256 must be 64 lower-case hex digits"
+    targets = entry["targets"]
+    if not isinstance(targets, list) or not set(targets) <= set(platforms.PLATFORMS):
+        return "targets must be a list of known platforms"
+    return ""
+
+
 def _parse(text: str, path: Path) -> dict:
     try:
         data = json.loads(text)
     except ValueError as exc:
-        raise EngkitError(
-            f"{path} is not valid JSON ({exc}); fix or delete it", EXIT_FAILURE
-        ) from None
+        raise EngkitError(f"{path} is not valid JSON ({exc}); fix or delete it") from None
     skills = data.get("skills") if isinstance(data, dict) else None
     if not isinstance(skills, dict) or data.get("lock_version") != 1:
         raise EngkitError(f"{path} has an unsupported structure (lock_version 1 expected)")
     for name, entry in skills.items():
-        if not isinstance(entry, dict) or not set(entry) >= ENTRY_KEYS:
-            raise EngkitError(f"{path}: entry '{name}' is malformed", EXIT_FAILURE)
-        if not isinstance(entry["targets"], list):
-            raise EngkitError(f"{path}: entry '{name}' has invalid targets", EXIT_FAILURE)
+        problem = _entry_problem(name, entry)
+        if problem:
+            raise EngkitError(f"{path}: entry {name!r}: {problem}; fix or delete it")
     return skills
 
 
@@ -59,32 +83,27 @@ def read(root: Path) -> dict:
     return _parse(text, path)
 
 
-def _write(path: Path, skills: dict) -> None:
-    data = json.dumps({"lock_version": 1, "skills": skills}, indent=2, sort_keys=True)
-    temporary = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
-    try:
-        fsutil.write_file(temporary, (data + "\n").encode())
-        os.replace(temporary, path)
-    except BaseException:
-        with contextlib.suppress(OSError):
-            os.unlink(temporary)
-        raise
-    fsutil.fsync_dir(path.parent)
+def _dump(skills: dict) -> str:
+    return json.dumps({"lock_version": 1, "skills": skills}, indent=2, sort_keys=True) + "\n"
 
 
 @contextlib.contextmanager
 def transaction(root: Path):
-    """Yield the skills mapping under an exclusive lock; it is saved if the block succeeds."""
-    if fcntl is None:
-        raise EngkitError("lockfile updates are unsupported on this platform", EXIT_FAILURE)
+    """Yield the skills mapping under an exclusive lock; it is saved only if it changed."""
+    require_locking()
     try:
         directory = fsutil.ensure_real_dirs(root, (".engkit",))
+        flags = os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0)
+        handle = os.fdopen(os.open(directory / f"{LOCK_NAME}.lock", flags, 0o644), "r")
     except fsutil.UnsafePathError as exc:
         raise EngkitError(f"cannot use .engkit: {exc}", EXIT_FAILURE) from None
     except OSError as exc:
-        raise EngkitError(f"cannot create .engkit: {exc}", EXIT_IO) from None
-    with open(directory / f"{LOCK_NAME}.lock", "a") as handle:
+        raise EngkitError(f"cannot open the lock under .engkit: {exc}", EXIT_IO) from None
+    with handle:
         fcntl.flock(handle, fcntl.LOCK_EX)
         skills = read(root)
+        before = _dump(skills)
         yield skills
-        _write(directory / LOCK_NAME, skills)
+        text = _dump(skills)
+        if text != before:
+            fsutil.replace_file(directory / LOCK_NAME, text.encode())

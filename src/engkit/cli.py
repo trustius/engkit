@@ -7,7 +7,17 @@ import json
 import sys
 from pathlib import Path
 
-from engkit import __version__
+from engkit import (
+    __version__,
+    catalog,
+    doctor,
+    fsutil,
+    installer,
+    memory,
+    resources,
+    sources,
+    validator,
+)
 from engkit.errors import EXIT_FAILURE, EXIT_IO, EXIT_OK, EXIT_USAGE, EngkitError
 from engkit.platforms import TARGET_CHOICES
 
@@ -22,23 +32,18 @@ EXIT_CODES_HELP = """exit codes:
 
 
 def _project_root(value: str | None) -> Path:
-    raw_path = Path(value) if value else Path.cwd()
     try:
-        root = raw_path.expanduser().resolve(strict=True)
+        return installer.resolve_root("project", value, None)
     except OSError as exc:
-        message = f"project directory not found: {raw_path} ({exc.strerror})"
-        raise EngkitError(message, EXIT_IO) from None
-    if not root.is_dir():
-        raise EngkitError(f"project directory is not a directory: {root}", EXIT_IO)
-    return root
+        raise EngkitError(
+            f"project directory unusable: {value or 'cwd'} ({exc})", EXIT_IO
+        ) from None
 
 
 def _resources() -> Path:
-    from engkit.resources import ResourceError, resource_root
-
     try:
-        return resource_root()
-    except ResourceError as exc:
+        return resources.resource_root()
+    except resources.ResourceError as exc:
         raise EngkitError(str(exc), EXIT_IO) from None
 
 
@@ -46,20 +51,32 @@ def _usage(message: str) -> EngkitError:
     return EngkitError(message, EXIT_USAGE)
 
 
-def _catalog(args):
-    from engkit import sources
-    from engkit.catalog import discover, discover_dir
+def _checked_name(name: str) -> str:
+    problem = validator.validate_name(name)
+    if problem:
+        raise _usage(f"invalid skill name {name!r}: {problem}")
+    return name
 
-    if not args.source:
-        if args.ref or args.path:
-            raise _usage("--ref and --path require --source")
-        return discover(_resources())
-    with sources.fetch(args.source, args.ref, args.path) as fetched:
-        return discover_dir(sources.skills_dir(fetched.root, args.path))
+
+def _print_issues(issues, label: str) -> int:
+    """Print issues (errors to stderr); return the error count."""
+    for issue in issues:
+        stream = sys.stderr if issue.level == "error" else sys.stdout
+        print(issue.format(), file=stream)
+    error_count = sum(1 for issue in issues if issue.level == "error")
+    if error_count:
+        print(f"{label} failed: {error_count} error(s)", file=sys.stderr)
+    return error_count
 
 
 def cmd_list(args) -> int:
-    result = _catalog(args)
+    if args.source:
+        with sources.fetch(args.source, args.ref, args.path) as fetched:
+            result = catalog.discover_dir(sources.skills_dir(fetched.root, args.path))
+    elif args.ref or args.path:
+        raise _usage("--ref and --path require --source")
+    else:
+        result = catalog.discover(_resources())
     if args.json:
         skills = [{"name": skill.name, "description": skill.description} for skill in result.skills]
         issues = [issue.format() for issue in result.issues]
@@ -67,22 +84,15 @@ def cmd_list(args) -> int:
         return EXIT_OK if result.ok else EXIT_FAILURE
     width = max((len(skill.name) for skill in result.skills), default=0)
     for skill in result.skills:
-        print(f"{skill.name.ljust(width)}  {skill.description}")
+        print(fsutil.printable(f"{skill.name.ljust(width)}  {skill.description}"))
     for issue in result.issues:
         print(issue.format(), file=sys.stderr)
     return EXIT_OK if result.ok else EXIT_FAILURE
 
 
 def cmd_validate(args) -> int:
-    from engkit.validator import validate
-
-    result = validate(_resources(), args.name)
-    for issue in result.issues:
-        stream = sys.stderr if issue.level == "error" else sys.stdout
-        print(issue.format(), file=stream)
-    error_count = sum(1 for issue in result.issues if issue.level == "error")
-    if error_count:
-        print(f"validation failed: {error_count} error(s)", file=sys.stderr)
+    result = validator.validate(_resources(), args.name)
+    if _print_issues(result.issues, "validation"):
         return EXIT_FAILURE
     print(f"ok: {len(result.skills)} skill(s) valid")
     return EXIT_OK
@@ -103,26 +113,25 @@ def _report(results) -> int:
 
 
 def cmd_install(args) -> int:
-    from engkit import installer
-
-    if args.source:
-        if args.name or not args.skill:
-            raise _usage("--source needs at least one --skill and no positional NAME")
-        names = list(dict.fromkeys(args.skill))
-        options = {"yes": args.yes, **_scope(args)}
-        results = installer.install_remote(
-            args.source, args.ref, args.path, names, args.target, **options
-        )
-        return _report(results)
-    if not args.name or args.skill or args.ref or args.path:
-        raise _usage("without --source give exactly one NAME and no --skill/--ref/--path")
-    return _report(installer.install(_resources(), args.name, args.target, **_scope(args)))
+    if not args.source:
+        if args.skill or args.ref or args.path or args.yes:
+            raise _usage("--skill, --ref, --path and --yes require --source")
+        if not args.name:
+            raise _usage("give a built-in NAME, or use --source with --skill")
+        name = _checked_name(args.name)
+        return _report(installer.install(_resources(), name, args.target, **_scope(args)))
+    if args.name or not args.skill:
+        raise _usage("--source needs at least one --skill and no positional NAME")
+    names = [_checked_name(name) for name in dict.fromkeys(args.skill)]
+    options = {"yes": args.yes, **_scope(args)}
+    results = installer.install_remote(
+        args.source, args.ref, args.path, names, args.target, **options
+    )
+    return _report(results)
 
 
 def cmd_update(args) -> int:
-    from engkit import installer
-
-    names = [args.name] if args.name else []
+    names = [_checked_name(args.name)] if args.name else []
     results = installer.update(_resources(), names, args.target, yes=args.yes, **_scope(args))
     if not results:
         print("nothing to update: no skills in the lock")
@@ -130,14 +139,11 @@ def cmd_update(args) -> int:
 
 
 def cmd_uninstall(args) -> int:
-    from engkit import installer
-
-    return _report(installer.uninstall(args.name, args.target, **_scope(args)))
+    name = _checked_name(args.name)
+    return _report(installer.uninstall(name, args.target, **_scope(args)))
 
 
 def cmd_doctor(args) -> int:
-    from engkit import doctor
-
     report = doctor.run(
         _resources(),
         args.target,
@@ -158,8 +164,6 @@ def cmd_doctor(args) -> int:
 
 
 def cmd_memory_init(args) -> int:
-    from engkit import fsutil, memory
-
     root = _project_root(args.project_dir)
     try:
         result = memory.init(root)
@@ -176,15 +180,7 @@ def cmd_memory_init(args) -> int:
 
 
 def cmd_memory_validate(args) -> int:
-    from engkit import memory
-
-    issues = memory.validate(_project_root(args.project_dir))
-    for issue in issues:
-        stream = sys.stderr if issue.level == "error" else sys.stdout
-        print(issue.format(), file=stream)
-    error_count = sum(1 for issue in issues if issue.level == "error")
-    if error_count:
-        print(f"memory validation failed: {error_count} error(s)", file=sys.stderr)
+    if _print_issues(memory.validate(_project_root(args.project_dir)), "memory validation"):
         return EXIT_FAILURE
     print("ok: memory is valid")
     return EXIT_OK
@@ -202,12 +198,13 @@ def _add_source(parser) -> None:
     parser.add_argument("--path", help="directory of skills inside --source")
 
 
-def _add_location(parser) -> None:
-    location = parser.add_mutually_exclusive_group()
-    location.add_argument("--project-dir", help="project root (default: current directory)")
-    location.add_argument(
-        "--global", dest="global_", action="store_true", help="use the user's home directory"
-    )
+def _add_project_dir(parser, allow_global: bool = False) -> None:
+    group = parser.add_mutually_exclusive_group() if allow_global else parser
+    group.add_argument("--project-dir", help="project root (default: current directory)")
+    if allow_global:
+        group.add_argument(
+            "--global", dest="global_", action="store_true", help="use the user's home directory"
+        )
 
 
 def _add_list(subparsers) -> None:
@@ -235,7 +232,7 @@ def _add_install(subparsers) -> None:
     _add_source(parser)
     parser.add_argument("--skill", action="append", help="skill to install from --source")
     parser.add_argument("--yes", action="store_true", help="install from --source (else preview)")
-    _add_location(parser)
+    _add_project_dir(parser, allow_global=True)
     parser.set_defaults(func=cmd_install)
 
 
@@ -246,7 +243,7 @@ def _add_update(subparsers) -> None:
     parser.add_argument("name", nargs="?", help="skill name (default: all locked skills)")
     parser.add_argument("--target", default="all", choices=TARGET_CHOICES)
     parser.add_argument("--yes", action="store_true", help="apply updates from git sources")
-    _add_location(parser)
+    _add_project_dir(parser, allow_global=True)
     parser.set_defaults(func=cmd_update)
 
 
@@ -254,14 +251,14 @@ def _add_uninstall(subparsers) -> None:
     parser = subparsers.add_parser("uninstall", help="remove an unmodified locked skill")
     parser.add_argument("name")
     parser.add_argument("--target", required=True, choices=TARGET_CHOICES)
-    _add_location(parser)
+    _add_project_dir(parser, allow_global=True)
     parser.set_defaults(func=cmd_uninstall)
 
 
 def _add_doctor(subparsers) -> None:
     parser = subparsers.add_parser("doctor", help="read-only diagnostics for installed skills")
     parser.add_argument("--target", default="all", choices=TARGET_CHOICES)
-    parser.add_argument("--project-dir", help="project root (default: current directory)")
+    _add_project_dir(parser)
     parser.add_argument(
         "--project-only", action="store_true", help="skip user-scope (home directory) checks"
     )
@@ -276,10 +273,10 @@ def _add_memory(subparsers) -> None:
     )
     commands.required = True
     init_parser = commands.add_parser("init", help="create .engkit/memory/ (never overwrites)")
-    init_parser.add_argument("--project-dir", help="project root (default: current directory)")
+    _add_project_dir(init_parser)
     init_parser.set_defaults(func=cmd_memory_init)
     validate_parser = commands.add_parser("validate", help="check memory format (read-only)")
-    validate_parser.add_argument("--project-dir", help="project root (default: current directory)")
+    _add_project_dir(validate_parser)
     validate_parser.set_defaults(func=cmd_memory_validate)
 
 
@@ -308,7 +305,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         return args.func(args)
     except EngkitError as exc:
-        print(f"engkit: error: {exc}", file=sys.stderr)
+        print(f"engkit: error: {fsutil.printable(str(exc))}", file=sys.stderr)
         return exc.exit_code
     except KeyboardInterrupt:
         print("engkit: interrupted", file=sys.stderr)

@@ -36,12 +36,24 @@ use the network. `validate`, `doctor`, `memory`, built-in `install` and
   submodule-free result and also accepts a commit SHA, which a lock-pinned
   reinstall needs.
 - **Hardening:**
-  - environment: `GIT_TERMINAL_PROMPT=0`, `GIT_LFS_SKIP_SMUDGE=1`;
-  - options on every call: `-c protocol.ext.allow=never`,
-    `-c core.hooksPath=/dev/null` (so no hooks run, including the user's
-    global ones), `-c advice.detachedHead=false`;
-  - a timeout (default 120 s, override with `ENGKIT_GIT_TIMEOUT`);
-  - git stderr is shown on failure, with `user:password@` in URLs redacted.
+  - environment: every `GIT_*` variable is dropped, then only `GIT_SSH`,
+    `GIT_SSH_COMMAND`, `GIT_SSL_CAINFO` and `GIT_SSL_CAPATH` are passed through
+    (proxy, `SSL_CERT_*`, `HOME` and `PATH` are not `GIT_*` and stay).
+    `GIT_TERMINAL_PROMPT=0`, `GIT_LFS_SKIP_SMUDGE=1`, empty `GIT_ASKPASS` and
+    `SSH_ASKPASS`, and `ssh -o BatchMode=yes` unless the user set an ssh command;
+  - options on every call: `--git-dir` and `--work-tree` pointing at the temp
+    checkout (an ambient `GIT_DIR` can never redirect a write),
+    `-c protocol.ext.allow=never`, `-c core.hooksPath=/dev/null` (so no hooks
+    run, including the user's global ones), `-c advice.detachedHead=false`,
+    `-c submodule.recurse=false`, `-c core.fsmonitor=false`;
+  - git runs in its own session; a timeout (default 120 s, override with a
+    positive `ENGKIT_GIT_TIMEOUT`) kills the whole process group;
+  - URLs with a password, an https user, a query string or a fragment are
+    rejected (use a git credential helper or ssh); git stderr is shown on
+    failure with any userinfo removed;
+  - fetched text is escaped (`\xNN`) before it is printed, validation rejects
+    control characters in file names, and a skill may have at most 500 files,
+    1 MiB per file and 10 MiB in total.
 - **Skill location:** `--path DIR` when given. Otherwise `skills/` if it
   exists, else the repository root.
 - **No git:** commands that need git fail with a clear message. Tests skip.
@@ -83,7 +95,9 @@ use the network. `validate`, `doctor`, `memory`, built-in `install` and
   than racing.
 - **Recording:** an install records the entry after each target reports
   `installed` or `already installed`. If the same name is already locked from
-  a different source, the result is `conflict` and nothing changes.
+  a different source, the result is `conflict` and nothing changes; the check
+  is repeated inside the lock transaction. An identical but unmanaged
+  destination is adopted into the lock as `already installed`.
 
 ## Update and uninstall (`installer.py`)
 
@@ -99,6 +113,13 @@ use the network. `validate`, `doctor`, `memory`, built-in `install` and
   4. `rename(dest → staging/<tx>/old)`.
   5. No-replace rename `new → dest`.
   6. Verify, then delete `old` and update the lock.
+
+  After step 4 the moved copy is hashed again; if it no longer equals the lock
+  digest it is renamed back (or kept in staging with its path reported) and
+  the result is `conflict`. Any failure after step 4, including an interrupt,
+  restores `old` before staging is deleted. `update --target X` is refused
+  when other targets of the entry would stay on the old content. A failed
+  fetch of one skill is reported for that skill and the others continue.
 
   If step 5 or 6 fails, rename `old` back. If that also fails, because
   something took the path, `old` is kept and its location reported. A brief

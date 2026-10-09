@@ -8,11 +8,15 @@ import ctypes.util
 import errno
 import hashlib
 import os
+import shutil
 import stat
 import sys
+import uuid
 from pathlib import Path
 
-NAME_MAX = 64
+MAX_SKILL_FILES = 500
+MAX_SKILL_FILE_BYTES = 1024 * 1024
+MAX_SKILL_BYTES = 10 * 1024 * 1024
 
 
 class UnsafePathError(ValueError):
@@ -31,12 +35,20 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def is_within(path: Path, root: Path) -> bool:
-    try:
-        path.relative_to(root)
-        return True
-    except ValueError:
-        return False
+def printable(text: str) -> str:
+    """Escape non-printable characters so fetched text cannot drive the terminal."""
+    return "".join(_escape(char) for char in text)
+
+
+def _escape(char: str) -> str:
+    if char.isprintable():
+        return char
+    code = ord(char)
+    if code <= 0xFF:
+        return f"\\x{code:02x}"
+    if code <= 0xFFFF:
+        return f"\\u{code:04x}"
+    return f"\\U{code:08x}"
 
 
 def safe_relpath(value: str, what: str = "path") -> str:
@@ -55,100 +67,94 @@ def safe_relpath(value: str, what: str = "path") -> str:
     return value
 
 
-def _raise_walk_error(exc: OSError) -> None:
-    # os.walk ignores errors by default, which would hide unreadable directories.
+def _raise(exc: OSError) -> None:
     raise exc
 
 
-def _walk(root: Path):
-    return os.walk(root, followlinks=False, onerror=_raise_walk_error)
+def entries(root: Path):
+    """Yield (relative POSIX key, path) of every entry below ``root``, never following symlinks."""
+    # os.walk ignores errors by default, which would hide unreadable directories.
+    for dirpath, dirnames, filenames in os.walk(root, followlinks=False, onerror=_raise):
+        base = Path(dirpath)
+        prefix = base.relative_to(root).as_posix()
+        for name in sorted(dirnames + filenames):
+            yield name if prefix == "." else f"{prefix}/{name}", base / name
 
 
-def _symlink_marker(path: Path) -> str:
-    return f"<symlink:{os.readlink(path)}>"
+def _file_digest(path: Path) -> str:
+    """Return sha256 of a regular file, "" for a directory; refuse everything else."""
+    mode = os.lstat(path).st_mode
+    if stat.S_ISREG(mode):
+        return sha256_file(path)
+    if stat.S_ISDIR(mode):
+        return ""
+    raise UnsafePathError(f"refusing symlink or special file: {path}")
 
 
-def _snapshot_directories(
-    base: Path, rel_base: str, dirnames: list[str], allow_symlinks: bool, result: dict[str, str]
-) -> None:
-    for name in sorted(dirnames):
-        path = base / name
-        if not path.is_symlink():
-            continue
-        if not allow_symlinks:
-            raise UnsafePathError(f"refusing symlink: {path}")
-        result[_join(rel_base, name)] = _symlink_marker(path)
-    dirnames[:] = sorted(name for name in dirnames if not (base / name).is_symlink())
+def tree_snapshot(root: Path) -> dict[str, str]:
+    """Map relative POSIX path to sha256 of every regular file below ``root``.
 
-
-def _snapshot_files(
-    base: Path, rel_base: str, filenames: list[str], allow_symlinks: bool, result: dict[str, str]
-) -> None:
-    for name in sorted(filenames):
-        path = base / name
-        mode = os.lstat(path).st_mode
-        if stat.S_ISLNK(mode):
-            if not allow_symlinks:
-                raise UnsafePathError(f"refusing symlink: {path}")
-            result[_join(rel_base, name)] = _symlink_marker(path)
-        elif stat.S_ISREG(mode):
-            result[_join(rel_base, name)] = sha256_file(path)
-        else:
-            raise UnsafePathError(f"refusing special file: {path}")
-
-
-def tree_snapshot(root: Path, *, allow_symlinks: bool = False) -> dict[str, str]:
-    """Map relative POSIX path to sha256 for every regular file below ``root``.
-
-    Empty directories are recorded as "<dir>". Symlinks and special files raise
-    UnsafePathError unless ``allow_symlinks`` (then recorded without being followed).
+    Empty directories are recorded as "<dir>"; symlinks and special files raise UnsafePathError.
     """
     result: dict[str, str] = {}
-    for dirpath, dirnames, filenames in _walk(root):
-        base = Path(dirpath)
-        rel_base = base.relative_to(root).as_posix()
-        _snapshot_directories(base, rel_base, dirnames, allow_symlinks, result)
-        if not dirnames and not filenames and base != root:
-            result[rel_base] = "<dir>"
-        _snapshot_files(base, rel_base, filenames, allow_symlinks, result)
+    directories = []
+    for key, path in entries(root):
+        digest = _file_digest(path)
+        if digest:
+            result[key] = digest
+        else:
+            directories.append(key)
+    parents = {key.rpartition("/")[0] for key in [*result, *directories]}
+    result.update({key: "<dir>" for key in directories if key not in parents})
     return result
 
 
-def _join(rel_base: str, name: str) -> str:
-    return name if rel_base == "." else f"{rel_base}/{name}"
+def copy_tree_regular(source: Path, destination: Path) -> None:
+    """Copy regular files and directories only; ``destination`` must not exist."""
+    os.mkdir(destination)
+    for key, path in entries(source):
+        if path.is_symlink():
+            raise UnsafePathError(f"refusing symlink: {path}")
+        if path.is_dir():
+            os.mkdir(destination / key)
+        else:
+            _copy_file(path, destination / key)
 
 
-def copy_tree_regular(src: Path, dst: Path) -> None:
-    """Copy regular files and directories only; ``dst`` must not exist."""
-    os.mkdir(dst)
-    for dirpath, dirnames, filenames in _walk(src):
-        base = Path(dirpath)
-        out = dst / base.relative_to(src)
-        for name in sorted(dirnames):
-            if (base / name).is_symlink():
-                raise UnsafePathError(f"refusing symlink: {base / name}")
-            os.mkdir(out / name)
-        for name in sorted(filenames):
-            path = base / name
-            mode = os.lstat(path).st_mode
-            if not stat.S_ISREG(mode):
-                raise UnsafePathError(f"refusing non-regular file: {path}")
-            write_file(out / name, path.read_bytes(), exclusive=True, mode=mode & 0o777)
+def _copy_file(source: Path, destination: Path) -> None:
+    mode = os.lstat(source).st_mode
+    if not stat.S_ISREG(mode):
+        raise UnsafePathError(f"refusing non-regular file: {source}")
+    read_flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    write_flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+    reader = os.fdopen(os.open(source, read_flags), "rb")
+    writer = os.fdopen(os.open(destination, write_flags, mode & 0o777), "wb")
+    with reader, writer:
+        shutil.copyfileobj(reader, writer)
+        writer.flush()
+        os.fsync(writer.fileno())
 
 
 def write_file(path: Path, data: bytes, *, exclusive: bool = True, mode: int = 0o644) -> None:
     """Write bytes and fsync; ``exclusive`` refuses to replace an existing path."""
     flags = os.O_WRONLY | os.O_CREAT | (os.O_EXCL if exclusive else os.O_TRUNC)
-    flags |= getattr(os, "O_NOFOLLOW", 0)
-    fd = os.open(path, flags, mode)
+    with os.fdopen(os.open(path, flags | getattr(os, "O_NOFOLLOW", 0), mode), "wb") as handle:
+        handle.write(data)
+        handle.flush()
+        os.fsync(handle.fileno())
+
+
+def replace_file(path: Path, data: bytes) -> None:
+    """Atomically replace ``path`` through a temporary sibling."""
+    temporary = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
     try:
-        view = memoryview(data)
-        while view:
-            written = os.write(fd, view)
-            view = view[written:]
-        os.fsync(fd)
-    finally:
-        os.close(fd)
+        write_file(temporary, data)
+        os.replace(temporary, path)
+    except BaseException:
+        with contextlib.suppress(OSError):
+            os.unlink(temporary)
+        raise
+    fsync_dir(path.parent)
 
 
 def fsync_dir(path: Path) -> None:
@@ -163,6 +169,16 @@ def fsync_dir(path: Path) -> None:
         os.close(fd)
 
 
+def _dir_problem(path: Path) -> str:
+    """Describe why ``path`` is not a real directory; empty when it is."""
+    mode = os.lstat(path).st_mode
+    if stat.S_ISLNK(mode):
+        return f"symlinked directory: {path}"
+    if not stat.S_ISDIR(mode):
+        return f"not a directory: {path}"
+    return ""
+
+
 def ensure_real_dirs(root: Path, rel_parts: tuple[str, ...]) -> Path:
     """Create ``root/parts...`` refusing symlinks; ``root`` must already be resolved."""
     # mkdir then lstat per part (not makedirs) so a symlink planted between steps is caught.
@@ -171,11 +187,9 @@ def ensure_real_dirs(root: Path, rel_parts: tuple[str, ...]) -> Path:
         current = current / part
         with contextlib.suppress(FileExistsError):
             os.mkdir(current)
-        mode = os.lstat(current).st_mode
-        if stat.S_ISLNK(mode):
-            raise UnsafePathError(f"refusing symlinked directory: {current}")
-        if not stat.S_ISDIR(mode):
-            raise UnsafePathError(f"not a directory: {current}")
+        problem = _dir_problem(current)
+        if problem:
+            raise UnsafePathError(f"refusing {problem}")
     if os.path.realpath(current) != str(current):
         raise UnsafePathError(f"directory resolves outside its expected location: {current}")
     return current
@@ -187,13 +201,11 @@ def check_no_symlinks(root: Path, rel_parts: tuple[str, ...]) -> list[str]:
     for part in rel_parts:
         current = current / part
         try:
-            mode = os.lstat(current).st_mode
+            problem = _dir_problem(current)
         except FileNotFoundError:
             return []
-        if stat.S_ISLNK(mode):
-            return [f"symlinked path: {current}"]
-        if not stat.S_ISDIR(mode):
-            return [f"not a directory: {current}"]
+        if problem:
+            return [problem]
     return []
 
 

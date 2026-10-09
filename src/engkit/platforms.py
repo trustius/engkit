@@ -29,10 +29,9 @@ _REGISTRY = {
 }
 
 
-# Skill names shipped with the platforms; a canonical skill with the same name may be shadowed.
-# Claude Code list observed in the skill listing of Claude Code 2.1.295 (2026-10-09). The Codex
-# list is unverified: only `openai-docs` was seen in the codex 0.144.1 binary. See
-# docs/compatibility.md.
+# Names observed in the Claude Code 2.1.295 skill listing and the codex 0.144.1 binary
+# (2026-10-09). Neither list is documented as complete, so it can lag behind the platforms.
+# A canonical skill with one of these names may be shadowed. See docs/compatibility.md.
 BUILTIN_SKILL_NAMES = {
     "claude": frozenset(
         {
@@ -49,11 +48,9 @@ BUILTIN_SKILL_NAMES = {
             "claude-api",
             "plugin-authoring",
             "workflow-authoring",
-            "review",
-            "skill-creator",
         }
     ),
-    "codex": frozenset({"openai-docs", "skill-creator", "skill-installer"}),
+    "codex": frozenset({"openai-docs"}),
 }
 
 
