@@ -5,11 +5,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Current state and commands
 
 engkit is a Python ≥3.11 package with one runtime dependency, PyYAML.
-Planning documents live in `docs/plans/` (`IMPLEMENTATION_PLAN.md`,
-`ENHANCEMENT_PLAN.md`, `PYPI_RELEASE_PLAN.md`, `SLASH_COMMANDS_PLAN.md`). They are
-local only: `.gitignore` excludes `docs/plans/`, so never `git add` them and never link to
-them from tracked files. Read the relevant plan before starting a task; older
-milestone sections in `docs/plans/IMPLEMENTATION_PLAN.md` are partly superseded.
+Planning documents live in `docs/plans/YYYY-MM-DD-<slug>.md` (for example
+`2026-10-09-enhancement-plan.md`). They are local only: `.gitignore` excludes
+`docs/plans/`, so never `git add` them and never link to them from tracked files.
+Read the relevant plan before starting a task; older milestone sections in
+`docs/plans/2026-10-09-implementation-plan.md` are partly superseded.
 Packaging and the release pipeline are in `docs/adr/0005-pypi-packaging.md`;
 release steps are in `RELEASING.md`.
 
@@ -104,6 +104,23 @@ difference in `docs/compatibility.md`):
 - **Agents never create repositories, push, tag, configure PyPI or publish.** Release steps are run by the owner (see `RELEASING.md`; packaging decisions in `docs/adr/0005-pypi-packaging.md`).
 - **Honest reporting:** do not claim a test passed unless it ran. When Claude Code or Codex cannot be run locally, mark end-to-end checks as pending. Evals must never contain invented scores, and fixtures must be synthetic.
 
+## Working rules
+
+These apply to every agent developing engkit (the shipped skills carry the same
+four rules as `SHARED_GUARDRAILS`, see `docs/skill-authoring.md`):
+
+- **Plans:** write any plan of two or more steps to `docs/plans/YYYY-MM-DD-<slug>.md`.
+  If the name exists, add `-2`, `-3`; never overwrite a plan. Plans are local: never
+  `git add` them and never link to them from tracked files.
+- **No remote actions:** never run anything against GitHub, PyPI or other remote services,
+  and never act on a server environment (prod, staging, dev, test). This extends the rule
+  against pushing, tagging and publishing; write the exact steps for the owner instead.
+- **Sensitive data:** fixtures are synthetic. Real keys, tokens, credentials or personal
+  data never enter the repo, commits, test output or plans; refer to them by location
+  and write `[REDACTED]`.
+- **Incremental:** make one small change at a time and run the relevant tests after each
+  one. Stop at the first failed check. Report actual results only.
+
 ## Coding rules
 
 - Full names, no abbreviations, except `i`, `path` and `exc`.
@@ -125,5 +142,6 @@ Each `SKILL.md` must pass `engkit validate` (see `docs/skill-authoring.md`):
 - Outputs distinguish **verified fact**, **plausible hypothesis** and **untested assumption**.
 - Memory hook: at task start, read `.engkit/memory/INDEX.md` if it exists, open only the entries that look relevant, and verify them against the code before relying on them. Do not write memory unless the skill's workflow says so.
 - No skill implicitly authorizes edits, production access or destructive actions.
+- `## Guardrails` starts with the four shared lines (`SHARED_GUARDRAILS`), copied verbatim.
 - Put depth in `references/` and load it only when relevant.
 - Add trigger evals in `evals/triggers/` for each skill. Other cases live in `evals/` (see `evals/README.md`). Never let a test runner collect `evals/`.
