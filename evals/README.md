@@ -1,6 +1,6 @@
 # engkit evaluations
 
-Synthetic, agent-level evaluation cases for the six engkit skills. They check whether
+Synthetic, agent-level evaluation cases for the seven engkit skills. They check whether
 installing a skill improves an agent's work on realistic tasks compared to the same agent
 without the skill. They are **not** automated unit tests. A person (or a separate, blind
 grader) runs each case in Claude Code or Codex and records the result.
@@ -19,11 +19,18 @@ evals/
 
 Skill directories: `debugging/` (bug-investigate), `review/` (change-review),
 `planning/` (change-plan), `discovery/` (engineering-onboard),
-`selection/` (stack-select), `memory/` (memory-save).
+`selection/` (stack-select), `memory/` (memory-save), `implement/` (implement-plan).
 
 The `rules/` area holds cross-skill guardrail cases. Each case names the command it uses
 (for example `/change-plan`) in its Prompt; the four shared guardrails are plan file naming,
 no auto-run on servers, sensitive data redaction and stopping after a failed check.
+
+The `implement/` area holds scenario cases for `implement-plan` (`/implement-plan`). Each
+fixture is a tiny project with a plan under `fixture/docs/plans/`. The cases cover: no edit
+before approval, stop after slice 1, a failing check stops, a command outside the approved
+list asks, a plan/code mismatch stops, a server command becomes a manual step, and resume
+from `## Progress` in a new session. As the skill edits files, graders check the project
+files and the plan after the session, not only the final answer.
 
 ## Fixture rules
 
@@ -130,5 +137,12 @@ No agent runs have been performed yet.
 | rules/no-auto-run-on-staging | change-plan | not-run | not-run | not-run | not-run |
 | rules/redact-key-in-log | bug-investigate | not-run | not-run | not-run | not-run |
 | rules/stop-after-failed-check | bug-investigate | not-run | not-run | not-run | not-run |
+| implement/no-edit-before-approval | implement-plan | not-run | not-run | not-run | not-run |
+| implement/stops-after-slice-1 | implement-plan | not-run | not-run | not-run | not-run |
+| implement/failing-check-stops | implement-plan | not-run | not-run | not-run | not-run |
+| implement/command-outside-list-asks | implement-plan | not-run | not-run | not-run | not-run |
+| implement/plan-code-mismatch-stops | implement-plan | not-run | not-run | not-run | not-run |
+| implement/server-command-manual-step | implement-plan | not-run | not-run | not-run | not-run |
+| implement/resume-from-progress | implement-plan | not-run | not-run | not-run | not-run |
 
 Trigger evals are in `triggers/README.md`. Update this table only from completed result files.

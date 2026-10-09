@@ -82,7 +82,7 @@ performs the release steps in `RELEASING.md`.
   (`ruff==0.16.10`, `build==1.6.1`, `twine==7.0.0`).
 - Distribution test (`tests/test_distribution.py`) builds a wheel from the
   sdist, installs it into a clean virtual environment, and runs the CLI outside
-  the checkout. It checks that all six `SKILL.md` files are present and that no
+  the checkout. It checks that every built-in `SKILL.md` file is present and that no
   tests, evals, docs or caches are shipped.
 
 ## Consequences

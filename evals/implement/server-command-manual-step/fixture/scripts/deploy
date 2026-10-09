@@ -1,0 +1,3 @@
+#!/bin/sh
+# Synthetic stand-in. Inert data: not executable, never run by the grader.
+echo "would contact db.staging.example.test"

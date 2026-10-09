@@ -51,6 +51,7 @@ dependency (installed automatically). `git` on `PATH` is needed only for
 |---|---|---|
 | `/engineering-onboard` | Map an existing project and record context in `.engkit/memory` | Maps the whole project. An argument limits it to a path or component |
 | `/change-plan` | Plan a change before coding | Asks what to plan |
+| `/implement-plan` | Build one slice of a plan in `docs/plans/`, verify it and record progress | Lists incomplete plans, newest first, and asks which one |
 | `/change-review` | Review a change | Reviews uncommitted changes against HEAD. If the tree is clean, asks for a range or PR |
 | `/bug-investigate` | Find the root cause of a bug | Asks for the symptom |
 | `/stack-select` | Compare stacks for a new project or component | Asks for requirements |
@@ -61,8 +62,28 @@ in Codex to browse the list. Both agents can also pick a command from its
 description, so the model may run one without you typing its name.
 
 Every command separates **verified fact**, **plausible hypothesis** and
-**untested assumption**. None authorizes edits, production access or
-destructive actions.
+**untested assumption**. No command edits files unless you ask it to, except
+`/implement-plan`, which edits only after you approve the slice and its
+commands. None authorizes production access or destructive actions.
+
+### Plan → implement → review
+
+A change that needs more than one step runs in three commands:
+
+```text
+/change-plan add rate limiting to the export API     # writes docs/plans/YYYY-MM-DD-<slug>.md
+/implement-plan docs/plans/YYYY-MM-DD-<slug>.md      # builds slice 1 after your approval
+/change-review                                       # reviews the uncommitted changes
+```
+
+`/implement-plan` builds one slice per run. It shows the slice, the files it
+will change and the verification commands of every remaining slice. One yes
+per session approves exactly those commands; a later session needs a new yes,
+and any other command needs its own yes. It edits only the files the slice
+names, plus the plan's `## Progress` table, runs the approved checks and
+records the result. It then suggests a commit message and stops. Say
+`continue` for the next slice. It never commits, pushes or switches branches;
+you do that after review. In Codex, type `$implement-plan` instead.
 
 ### Rules every command follows
 

@@ -21,6 +21,8 @@ slice, and update rows in place. Touch nothing else in the plan.
 - Record commands and results (pass, fail, counts), never their output and never any secret.
 - Date is today's absolute date (YYYY-MM-DD); ask if it is unknown.
 - A failed or blocked row is updated in place when the slice is retried.
+- A slice whose manual check is still pending is `blocked` (Notes: manual check pending)
+  until the user reports the result.
 
 ## Complete or incomplete
 - Complete: every slice in the plan has a row that is `done` or `skipped`.

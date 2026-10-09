@@ -66,8 +66,8 @@ Concerns that stay separate:
 
 1. **Skills** (`src/engkit/skills/<name>/SKILL.md`): stack-neutral workflows, exposed
    as slash commands. Built-in commands: `/engineering-onboard`, `/change-plan`,
-   `/change-review`, `/bug-investigate`, `/stack-select`, `/memory-save`
-   (`$name` in Codex). Old names (`project-discovery`, `implementation-planning`,
+   `/implement-plan`, `/change-review`, `/bug-investigate`, `/stack-select`,
+   `/memory-save` (`$name` in Codex). Seven in total. Old names (`project-discovery`, `implementation-planning`,
    `systematic-debugging`, `stack-selection`, `project-memory`) were dropped
    without aliases; 0.1.0 is unreleased.
 2. **Platform adapters** (`platforms.py`): the only place that maps
@@ -141,7 +141,7 @@ Each `SKILL.md` must pass `engkit validate` (see `docs/skill-authoring.md`):
 - Sections in this order: `When to use`, `When to ask`, `Objective`, `Inputs`, `Workflow`, `Output contract`, `Guardrails`, and optionally `References`.
 - Outputs distinguish **verified fact**, **plausible hypothesis** and **untested assumption**.
 - Memory hook: at task start, read `.engkit/memory/INDEX.md` if it exists, open only the entries that look relevant, and verify them against the code before relying on them. Do not write memory unless the skill's workflow says so.
-- No skill implicitly authorizes edits, production access or destructive actions.
+- No skill edits files without an explicit user request. `implement-plan` edits files only after the user's session approval of the slice and its commands. No skill authorizes production access or destructive actions.
 - `## Guardrails` starts with the four shared lines (`SHARED_GUARDRAILS`), copied verbatim.
 - Put depth in `references/` and load it only when relevant.
 - Add trigger evals in `evals/triggers/` for each skill. Other cases live in `evals/` (see `evals/README.md`). Never let a test runner collect `evals/`.

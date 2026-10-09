@@ -50,9 +50,14 @@ validator keeps the copies identical. A skill may add more specific guardrails
   code before relying on it. If the file does not exist, continue without it.
   Do not create or edit memory unless the skill's workflow says so; memory
   writes go through `memory-save`.
-- **No implicit authority.** No skill authorizes edits, production access or
-  destructive actions. A documented command is neither permission to run it nor
-  evidence that it passes.
+- **No implicit authority.** No skill edits files without an explicit user request.
+  `implement-plan` edits files only after the user's session approval of the slice
+  and its commands. No skill authorizes production access or destructive actions.
+  A documented command is neither permission to run it nor evidence that it passes.
+- **Plan-file progress exception.** `implement-plan` may update only the
+  `## Progress` section of the plan it is implementing, and only after the
+  approval above. This is not plan writing: the Plans rule still forbids
+  overwriting plan files, and no other part of a plan may be edited.
 - **Facts versus assumptions.** Output contracts label every claim as
   **verified fact** (checked in this session, with the source), **plausible
   hypothesis** (consistent with the evidence, not checked) or **untested

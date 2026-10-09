@@ -41,8 +41,8 @@ every step stays small, approved and reviewable.
    user says so; if every slice is done or skipped, say the plan is complete and stop.
 2. Preflight: `git status` is read-only and the only command run before approval. Ask before
    continuing if changes are not explained by `## Progress`. Check every affected path of the
-   slice against the code. On a mismatch or a dirty tree, report the evidence in chat only and
-   stop before editing; suggest `/change-plan`. Never write Progress before approval.
+   slice against the code. On a mismatch between plan and code, report the evidence in chat
+   only and stop before editing; suggest `/change-plan`. Never write Progress before approval.
 3. Approval request: show the slice, the files it will create, edit or delete (including plan
    file: `## Progress`), and the verification commands (argv, cwd) of EVERY remaining slice.
    List only commands that run locally and contact no remote host. Never list one that reads
@@ -59,8 +59,9 @@ every step stays small, approved and reviewable.
 5. Verify: run only the approved commands. On failure write the `failed` row (step 6 format),
    report redacted output, ask, and stop; never go on to the next slice.
 6. Record: update `## Progress` (load `references/progress-format.md`), report with the output
-   contract, suggest a commit message, and wait. Stop after every slice. On "continue", repeat
-   steps 2-5 for the next slice and show its files; a command not yet listed needs its own yes.
+   contract (listing the next slice's files), suggest a commit message, and wait. Stop after every
+   slice. On "continue", repeat steps 2, 4 and 5 for the next slice; a file or command not in
+   the approved list or the last report needs its own yes.
 7. Finish after the last slice: check each acceptance criterion using only approved commands
    (list any other check under Commands not run), label each result verified fact, plausible
    hypothesis or untested assumption, suggest `/change-review`, and `/memory-save` for
@@ -76,6 +77,7 @@ Memory used: <entry - verified | stale | unverifiable> or none
 Preflight: working tree: <clean | explained by Progress | asked>  plan vs code: <match | mismatch>
 Approved commands: <argv, cwd> or approval pending
 Files changed: <path - created | edited | deleted> or none
+Next slice files: <path - create | edit | delete> or none
 Verification: <command - result>
 - verified fact: <observed in command output or code>
 - plausible hypothesis: <likely, not confirmed>

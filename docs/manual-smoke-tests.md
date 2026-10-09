@@ -116,9 +116,9 @@ claude --version     # record the version
 claude               # then the steps below
 ```
 
-1. Type `/`. Expected: `/engineering-onboard`, `/change-plan`, `/change-review`,
-   `/bug-investigate`, `/stack-select` and `/memory-save` are listed. No
-   old name appears.
+1. Type `/`. Expected: `/engineering-onboard`, `/change-plan`, `/implement-plan`,
+   `/change-review`, `/bug-investigate`, `/stack-select` and `/memory-save` are
+   listed. No old name appears.
 2. Run `/engineering-onboard`. Expected: it maps the fixture and writes only
    under `.engkit/memory/`. Run `git status` before and after. Expected: no
    other file changed, and `CLAUDE.md` and `AGENTS.md` are not edited.
@@ -143,7 +143,8 @@ codex --version      # record the version
 codex                # then the steps below
 ```
 
-1. Type `/skills` or `$`. Expected: the same six commands are listed.
+1. Type `/skills` or `$`. Expected: the same seven commands are listed, including
+   `$implement-plan`.
 2. Run `$engineering-onboard`, then `$change-review` after a synthetic edit, as
    in section 6. Expected results are the same.
 3. Optional: run `$change-review synthetic-argument` and record whether the
@@ -152,7 +153,77 @@ codex                # then the steps below
 
 Record the Codex CLI version, the model, and the result of each step.
 
-## 8. Cleanup
+## 8. Plan → implement → review (Claude Code)
+
+A synthetic two-slice change in a throwaway Python project. Slice 1 adds
+`multiply`, slice 2 adds `square`, and both are verified by one command.
+
+```bash
+rm -rf /tmp/engkit-smoke/plan-claude && mkdir -p /tmp/engkit-smoke/plan-claude/tests
+cd /tmp/engkit-smoke/plan-claude && git init -q
+printf 'def add(a, b):\n    return a + b\n' > calc.py
+printf 'import unittest\nfrom calc import add\n\n\nclass TestAdd(unittest.TestCase):\n    def test_add(self):\n        self.assertEqual(add(2, 3), 5)\n' > tests/test_calc.py
+$ENGKIT init --project-dir . --target claude
+claude --version     # record the version
+claude               # then the steps below
+```
+
+1. Run `/change-plan add multiply and square to calc.py in two slices`. Expected:
+   a plan is written to `docs/plans/YYYY-MM-DD-<slug>.md`, each slice has a
+   verification that is a command (argv and cwd) or a named manual check, and the
+   next step is `/implement-plan docs/plans/<file>`. Then, in a second shell, run
+   `git add -A && git -c user.email=smoke@example.test -c user.name=smoke commit -qm baseline`
+   so the preflight starts from a clean tree (`docs/plans/` is gitignored only in
+   engkit's own repository).
+2. Run `/implement-plan docs/plans/<file>` (slice 1). Expected, in this order:
+   - Before any edit, an approval request shows slice 1, the files it will change
+     (the files the plan's slice 1 names, for example `calc.py` and `tests/test_calc.py`,
+     plus the plan's `## Progress`), and the
+     verification commands of both slices as argv and cwd. Check `git status` in
+     the second shell now: expected clean. If a file changed before the request
+     appeared, record the check as failed.
+   - Answer `yes`. Then `git status` shows only `calc.py`, `tests/test_calc.py`
+     and the plan file as changed. Nothing else changed.
+   - The approved command runs (`python3 -m unittest discover -s tests`, cwd the
+     project root) and passes. The plan's `## Progress` has a `done` row for slice 1.
+   - It suggests a commit message and stops without starting slice 2.
+3. Reply `continue`. Expected: slice 2 is shown with its files, its edits stay
+   inside those files, and the command approved in step 2 runs again without a new
+   yes. Its Progress row is `done`, and it stops again.
+4. Run `/change-review`. Expected: it reviews the uncommitted changes against HEAD,
+   separates verified fact, hypothesis and assumption, and edits nothing. Run
+   `git status` before and after: no change.
+
+Record the Claude Code version, the model, and the result of each step in the
+results table.
+
+## 9. Plan → implement → review (Codex)
+
+Same synthetic project in a separate copy, with `$` commands.
+
+```bash
+rm -rf /tmp/engkit-smoke/plan-codex && mkdir -p /tmp/engkit-smoke/plan-codex/tests
+cd /tmp/engkit-smoke/plan-codex && git init -q
+printf 'def add(a, b):\n    return a + b\n' > calc.py
+printf 'import unittest\nfrom calc import add\n\n\nclass TestAdd(unittest.TestCase):\n    def test_add(self):\n        self.assertEqual(add(2, 3), 5)\n' > tests/test_calc.py
+$ENGKIT init --project-dir . --target codex     # installs to .agents/skills/
+codex --version      # record the version
+codex                # then the steps below
+```
+
+1. Run `$change-plan add multiply and square to calc.py in two slices`, then commit
+   the baseline as in section 8, step 1.
+2. Run `$implement-plan docs/plans/<file>`. Expected: the same approval request,
+   edits and stop as section 8, step 2. The plan path is an argument, and Codex's
+   argument passing is pending (`compatibility.md`). If the path does not reach the
+   command, the expected result is the list of incomplete plans and a question
+   about which one. Record which behavior occurred.
+3. Reply `continue`, then run `$change-review`. Expected: the same results as
+   section 8, steps 3 and 4.
+
+Record the Codex CLI version, the model, and the result of each step.
+
+## 10. Cleanup
 
 Delete `/tmp/engkit-smoke/*`. Confirm that `~/.claude/skills`, `~/.agents/skills`,
 `~/.codex/skills` (legacy) and `~/.engkit` are unchanged compared with before
@@ -171,4 +242,6 @@ Every outcome is `pending`. No check has been run in a live session yet.
 | 2026-10-09 | 5 | engkit CLI only | macOS | pending | Not run. Agent behavior with the sentinel files is unverified |
 | 2026-10-09 | 6 (slash, Claude Code) | Claude Code 2.1.295 (record actual) | macOS | pending | Not run: `/` list, `/engineering-onboard`, `/change-review`. Record model |
 | 2026-10-09 | 7 (slash, Codex) | Codex CLI 0.144.1 (record actual) | macOS | pending | Not run: `/skills`, `$engineering-onboard`, `$change-review`, argument test. Record model |
-| 2026-10-09 | 8 | engkit CLI only | macOS | pending | Not run |
+| 2026-10-09 | 8 (plan → implement → review, Claude Code) | Claude Code 2.1.295 (record actual) | macOS | pending | Not run: needs an interactive session and model access. Record model |
+| 2026-10-09 | 9 (plan → implement → review, Codex) | Codex CLI 0.144.1 (record actual) | macOS | pending | Not run: needs an interactive session. Record whether the plan path reaches `$implement-plan` |
+| 2026-10-09 | 10 | engkit CLI only | macOS | pending | Not run |

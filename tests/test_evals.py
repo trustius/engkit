@@ -10,6 +10,7 @@ SKILL_DIRS = {
     "discovery": "engineering-onboard",
     "selection": "stack-select",
     "memory": "memory-save",
+    "implement": "implement-plan",
 }
 SECTIONS = (
     "## Prompt",
@@ -39,6 +40,15 @@ class EvalStructureTest(unittest.TestCase):
             prompt = text.split("## Prompt", 1)[1].split("\n## ", 1)[0]
             with self.subTest(case=case.name):
                 self.assertRegex(prompt, r"/(bug-investigate|change-plan|change-review)")
+
+    def test_implement_area_has_seven_cases_naming_the_command(self):
+        cases = [c for c in self.cases() if c.parent.name == "implement"]
+        self.assertGreaterEqual(len(cases), 7)
+        for case in cases:
+            text = (case / "case.md").read_text()
+            prompt = text.split("## Prompt", 1)[1].split("\n## ", 1)[0]
+            with self.subTest(case=case.name):
+                self.assertIn("/implement-plan", prompt)
 
     def test_case_sections(self):
         for case in self.cases():
