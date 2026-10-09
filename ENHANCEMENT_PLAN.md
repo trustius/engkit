@@ -36,6 +36,8 @@
 | Q5 | Có thêm `ruff` làm dev dependency không (cần cài package)? | P1 | Có, chỉ dùng khi dev, không phải runtime |
 | Q6 | Có `git init` và commit baseline trước khi sửa không? | P0 | Có, bắt buộc, vì P2 xoá nhiều code |
 
+**Đã chốt (user, 2026-10-09):** Q1 = A; Q2, Q3, Q4 theo đề xuất; Q5 = có, cài `ruff` vào `.venv`; Q6 = có (commit baseline `ca79005`).
+
 ## 3. Coding rules
 
 - Tên đầy đủ, không viết tắt: `component` thay cho `comp`, `diagnostics` thay cho `diags`, `explicit_component` thay cho `ec`. Ngoại lệ: `i` trong vòng lặp ngắn, `path`, `exc`.
