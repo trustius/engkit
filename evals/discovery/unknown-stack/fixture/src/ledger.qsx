@@ -1,0 +1,6 @@
+@unit ledger
+
+table today {
+  col date : day
+  col amount : money
+}

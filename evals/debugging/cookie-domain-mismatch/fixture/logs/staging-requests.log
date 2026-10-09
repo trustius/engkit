@@ -1,0 +1,13 @@
+# Synthetic trace captured from a test browser in staging. Hosts are placeholders.
+2026-10-01T09:14:02.101Z REQ  POST https://auth.example.test/login  cookie=-
+2026-10-01T09:14:02.188Z RESP 302 location=https://app.example.test/dashboard
+2026-10-01T09:14:02.188Z RESP set-cookie: sid=Zx1...redacted; Domain=auth.example.test; Path=/; Max-Age=3600; Secure; HttpOnly; SameSite=Lax
+2026-10-01T09:14:02.240Z REQ  GET  https://app.example.test/dashboard  cookie=-
+2026-10-01T09:14:02.251Z RESP 302 location=https://auth.example.test/login?next=/dashboard
+2026-10-01T09:14:02.300Z REQ  GET  https://auth.example.test/login?next=/dashboard  cookie=sid=Zx1...redacted
+2026-10-01T09:14:02.311Z RESP 200 (login form)
+2026-10-01T09:14:05.020Z REQ  POST https://auth.example.test/login  cookie=sid=Zx1...redacted
+2026-10-01T09:14:05.090Z RESP 302 location=https://app.example.test/dashboard
+2026-10-01T09:14:05.090Z RESP set-cookie: sid=Qp7...redacted; Domain=auth.example.test; Path=/; Max-Age=3600; Secure; HttpOnly; SameSite=Lax
+2026-10-01T09:14:05.141Z REQ  GET  https://app.example.test/dashboard  cookie=-
+2026-10-01T09:14:05.150Z RESP 302 location=https://auth.example.test/login?next=/dashboard

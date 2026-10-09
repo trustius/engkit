@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+.pytest_cache/
+# engkit's own generation state if someone runs it against this repo
+.engkit/staging/
+.engkit/generation.lock
+.ruff_cache/

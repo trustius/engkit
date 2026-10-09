@@ -1,0 +1,1 @@
+- Pack `${pack_id}@${pack_version}`: run scripts through the package manager recorded for `${component_root}`; if it is ambiguous, ask before choosing.

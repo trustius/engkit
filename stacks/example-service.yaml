@@ -1,0 +1,20 @@
+# Synthetic example stack definition. Technology ids are illustrative, not defaults.
+schema_version: 1
+kind: stack
+id: example-service
+description: Single service with an explicitly declared test command (example only).
+project:
+  mode: new
+  constraints:
+    deployment: to-be-decided
+components:
+  - id: service
+    root: .
+    stack:
+      languages: [go]
+      build_tools: [go]
+    commands:
+      test: {argv: [go, test, ./...], status: documented, source: stacks/example-service.yaml}
+    packs: [{id: go, version: 1.0.0}]
+    unresolved:
+      - Datastore not chosen yet.

@@ -1,0 +1,15 @@
+schema_version: 1
+kind: pack
+id: typescript
+version: 1.0.0
+description: Representative pack for TypeScript projects; depends on the javascript pack.
+profile_schema: {min: 1, max: 1}
+applies_to:
+  stack: [typescript]
+dependencies:
+  - {id: javascript, version: 1.0.0}
+detect:
+  - files: [tsconfig.json]
+    stack: {languages: [typescript]}
+references: [references/typing.md]
+fragments: [fragments/component.md]

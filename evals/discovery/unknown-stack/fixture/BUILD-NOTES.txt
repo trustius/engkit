@@ -1,0 +1,13 @@
+Build notes (synthetic fixture)
+===============================
+
+There is no Makefile. We build on the shared build host only.
+
+1. Log in to the build host (ask the platform team for access).
+2. From the repo root, run the in-house tool:  qforge assemble --profile release
+3. qforge reads src/layout.def to decide the order in which .qsx units are compiled.
+4. String tables in assets/ are merged at the end of the assemble step.
+5. The output bundle appears in out/ on the build host (not committed).
+
+Testing: there is no automated test suite. See checks/smoke.txt for the manual check.
+qforge version: whatever is installed on the build host.

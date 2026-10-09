@@ -1,0 +1,36 @@
+--- a/wallet.py
++++ b/wallet.py
+@@ -1,13 +1,30 @@
+ # Synthetic fixture. Not a real service.
+ class InsufficientFunds(Exception):
+     pass
+ 
+ 
+-def debit(db, account_id, amt, reason):
+-    with db.transaction():
+-        changed = db.execute(
+-            "UPDATE accounts SET balance = balance - ? WHERE id = ? AND balance >= ?",
+-            (amt, account_id, amt),
+-        )
+-        if changed == 0:
+-            raise InsufficientFunds(account_id)
++def _get_balance(db, account_id):
++    row = db.query_one("SELECT balance FROM accounts WHERE id = ?", (account_id,))
++    return row.balance
++
++
++def debit(db, account_id, amount, reason):
++    balance = _get_balance(db, account_id)
++    if balance < amount:
++        raise InsufficientFunds(account_id)
++    new_balance = balance - amount
++    with db.transaction():
++        db.execute(
++            "UPDATE accounts SET balance = ? WHERE id = ?",
++            (new_balance, account_id),
++        )
++        db.execute(
++            "INSERT INTO ledger (account_id, delta, reason) VALUES (?, ?, ?)",
++            (account_id, -amount, reason),
++        )
++    return new_balance

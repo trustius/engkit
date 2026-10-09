@@ -1,0 +1,7 @@
+@unit main
+@requires ledger, report
+
+entry {
+  load ledger.today -> L
+  emit report.daily(L)
+}

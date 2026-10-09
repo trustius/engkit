@@ -1,0 +1,6 @@
+@unit report
+@requires ledger
+
+view daily(L) {
+  sum L.amount by L.date
+}

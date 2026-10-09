@@ -1,0 +1,1 @@
+- Pack `${pack_id}@${pack_version}`: `${component_root}` builds on the JVM; check whether a wrapper script is the documented entry point.

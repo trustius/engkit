@@ -1,0 +1,1 @@
+- Pack `${pack_id}@${pack_version}`: treat `${component_root}` as a Go module; inferred commands are conventions until confirmed from project docs or CI.

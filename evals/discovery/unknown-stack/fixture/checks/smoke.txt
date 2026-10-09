@@ -1,0 +1,3 @@
+Manual smoke check (synthetic)
+- Open the bundle on the build host viewer.
+- Confirm "Daily report" title renders and totals are non-negative.

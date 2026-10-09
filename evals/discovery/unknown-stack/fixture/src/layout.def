@@ -1,0 +1,3 @@
+# compile order (synthetic)
+order = ledger, report, main
+target = bundle

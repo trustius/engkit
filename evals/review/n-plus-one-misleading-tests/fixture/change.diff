@@ -1,0 +1,24 @@
+--- a/export.py
++++ b/export.py
+@@ -1,18 +1,21 @@
+ # Synthetic fixture. Not a real service.
+ import csv
+ import io
+ 
+ 
+-def export_orders(orders_repo, since):
+-    rows = orders_repo.list_for_export(since)
++def export_orders(orders_repo, customers, since):
++    orders = orders_repo.list_for_export(since)
+     out = io.StringIO()
+     writer = csv.writer(out)
+-    writer.writerow(["order_id", "total", "created_at"])
+-    for r in rows:
+-        writer.writerow([r.id, r.total, r.created_at.isoformat()])
++    writer.writerow(["order_id", "customer_name", "total", "created_at"])
++    for order in orders:
++        customer = customers.get(order.customer_id)
++        writer.writerow(
++            [order.id, customer.name, order.total, order.created_at.isoformat()]
++        )
+     return out.getvalue()

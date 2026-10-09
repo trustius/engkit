@@ -1,0 +1,8 @@
+# Canonical resources that setup.py bundles into engkit/_resources at build time.
+# Without these the sdist cannot build a wheel.
+graft skills
+graft packs
+graft schemas
+graft templates
+graft stacks
+global-exclude __pycache__ *.py[cod] .DS_Store

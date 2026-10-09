@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "engkit"
+version = "0.1.0"
+description = "Portable engineering-workflow skills and an offline CLI for Claude Code and Codex."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+dependencies = [
+    # Single runtime dependency, used only through yaml.safe_load / safe_dump.
+    "PyYAML>=6.0,<7",
+]
+
+[project.scripts]
+engkit = "engkit.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+packages = ["engkit"]
+
+[tool.pytest.ini_options]
+# Never collect eval fixtures: they are inert synthetic data, not tests.
+testpaths = ["tests"]

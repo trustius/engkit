@@ -1,0 +1,727 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "engkit/profile.schema.json",
+  "title": "engkit project profile (.engkit/project.yaml)",
+  "description": "Documentation schema. engkit's built-in validator (src/engkit/profiles.py) is authoritative. Merge: scalars override, maps merge recursively, lists replace except components (keyed by id) and evidence (union).",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "project"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "project": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mode": {
+          "enum": [
+            "existing",
+            "new"
+          ],
+          "default": "existing"
+        },
+        "description": {
+          "type": "string"
+        },
+        "constraints": {
+          "type": "object",
+          "description": "Free-form scalar or list-of-scalar constraints; no field is mandatory."
+        }
+      }
+    },
+    "defaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "commands": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^[a-z0-9][a-z0-9_-]*$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/command"
+          }
+        },
+        "conventions": {
+          "$ref": "#/$defs/conventions"
+        },
+        "packs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/pack_ref"
+          }
+        }
+      }
+    },
+    "components": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/component"
+      }
+    },
+    "overrides": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/partial_component"
+      }
+    }
+  },
+  "$defs": {
+    "command": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "argv": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Argument vector; rendered, never executed, never passed to a shell."
+        },
+        "cwd": {
+          "type": "string",
+          "description": "Project-relative POSIX path; no absolute paths, '..' or empty segments.",
+          "not": {
+            "pattern": "(^/|\\\\|(^|/)\\.\\.(/|$))"
+          }
+        },
+        "status": {
+          "enum": [
+            "unknown",
+            "documented",
+            "inferred",
+            "verified",
+            "ambiguous"
+          ]
+        },
+        "source": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    },
+    "pack_ref": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+        },
+        {
+          "type": "object",
+          "required": [
+            "id"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+            },
+            "version": {
+              "type": "string",
+              "pattern": "^\\d+\\.\\d+\\.\\d+$",
+              "description": "Exact version pin."
+            }
+          }
+        }
+      ]
+    },
+    "conventions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "references": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "description": "Project-relative POSIX path; no absolute paths, '..' or empty segments.",
+            "not": {
+              "pattern": "(^/|\\\\|(^|/)\\.\\.(/|$))"
+            }
+          }
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "component": {
+      "type": "object",
+      "required": [
+        "id",
+        "root"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+        },
+        "root": {
+          "type": "string",
+          "description": "Project-relative POSIX path; no absolute paths, '..' or empty segments.",
+          "not": {
+            "pattern": "(^/|\\\\|(^|/)\\.\\.(/|$))"
+          }
+        },
+        "description": {
+          "type": "string"
+        },
+        "stack": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "languages": {
+              "type": "array",
+              "items": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9.+_-]*$"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "id"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "pattern": "^[a-z0-9][a-z0-9.+_-]*$"
+                      },
+                      "version": {
+                        "type": "string",
+                        "description": "Constraint such as '1.2', '>=1.2,<2', '^1.2', '~1.2'."
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "runtimes": {
+              "type": "array",
+              "items": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9.+_-]*$"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "id"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "pattern": "^[a-z0-9][a-z0-9.+_-]*$"
+                      },
+                      "version": {
+                        "type": "string",
+                        "description": "Constraint such as '1.2', '>=1.2,<2', '^1.2', '~1.2'."
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "frameworks": {
+              "type": "array",
+              "items": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9.+_-]*$"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "id"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "pattern": "^[a-z0-9][a-z0-9.+_-]*$"
+                      },
+                      "version": {
+                        "type": "string",
+                        "description": "Constraint such as '1.2', '>=1.2,<2', '^1.2', '~1.2'."
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "datastores": {
+              "type": "array",
+              "items": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9.+_-]*$"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "id"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "pattern": "^[a-z0-9][a-z0-9.+_-]*$"
+                      },
+                      "version": {
+                        "type": "string",
+                        "description": "Constraint such as '1.2', '>=1.2,<2', '^1.2', '~1.2'."
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "build_tools": {
+              "type": "array",
+              "items": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9.+_-]*$"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "id"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "pattern": "^[a-z0-9][a-z0-9.+_-]*$"
+                      },
+                      "version": {
+                        "type": "string",
+                        "description": "Constraint such as '1.2', '>=1.2,<2', '^1.2', '~1.2'."
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "package_managers": {
+              "type": "array",
+              "items": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9.+_-]*$"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "id"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "pattern": "^[a-z0-9][a-z0-9.+_-]*$"
+                      },
+                      "version": {
+                        "type": "string",
+                        "description": "Constraint such as '1.2', '>=1.2,<2', '^1.2', '~1.2'."
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "tools": {
+              "type": "array",
+              "items": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9.+_-]*$"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "id"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "pattern": "^[a-z0-9][a-z0-9.+_-]*$"
+                      },
+                      "version": {
+                        "type": "string",
+                        "description": "Constraint such as '1.2', '>=1.2,<2', '^1.2', '~1.2'."
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "commands": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^[a-z0-9][a-z0-9_-]*$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/command"
+          }
+        },
+        "conventions": {
+          "$ref": "#/$defs/conventions"
+        },
+        "packs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/pack_ref"
+          }
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "source"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "source": {
+                "type": "string",
+                "description": "Project-relative POSIX path; no absolute paths, '..' or empty segments.",
+                "not": {
+                  "pattern": "(^/|\\\\|(^|/)\\.\\.(/|$))"
+                }
+              },
+              "field": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "value": {
+                "type": "string"
+              },
+              "confidence": {
+                "enum": [
+                  "confirmed",
+                  "inferred",
+                  "unknown"
+                ]
+              }
+            }
+          }
+        },
+        "unresolved": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "partial_component": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "root": {
+          "type": "string",
+          "description": "Project-relative POSIX path; no absolute paths, '..' or empty segments.",
+          "not": {
+            "pattern": "(^/|\\\\|(^|/)\\.\\.(/|$))"
+          }
+        },
+        "description": {
+          "type": "string"
+        },
+        "stack": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "languages": {
+              "type": "array",
+              "items": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9.+_-]*$"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "id"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "pattern": "^[a-z0-9][a-z0-9.+_-]*$"
+                      },
+                      "version": {
+                        "type": "string",
+                        "description": "Constraint such as '1.2', '>=1.2,<2', '^1.2', '~1.2'."
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "runtimes": {
+              "type": "array",
+              "items": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9.+_-]*$"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "id"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "pattern": "^[a-z0-9][a-z0-9.+_-]*$"
+                      },
+                      "version": {
+                        "type": "string",
+                        "description": "Constraint such as '1.2', '>=1.2,<2', '^1.2', '~1.2'."
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "frameworks": {
+              "type": "array",
+              "items": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9.+_-]*$"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "id"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "pattern": "^[a-z0-9][a-z0-9.+_-]*$"
+                      },
+                      "version": {
+                        "type": "string",
+                        "description": "Constraint such as '1.2', '>=1.2,<2', '^1.2', '~1.2'."
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "datastores": {
+              "type": "array",
+              "items": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9.+_-]*$"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "id"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "pattern": "^[a-z0-9][a-z0-9.+_-]*$"
+                      },
+                      "version": {
+                        "type": "string",
+                        "description": "Constraint such as '1.2', '>=1.2,<2', '^1.2', '~1.2'."
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "build_tools": {
+              "type": "array",
+              "items": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9.+_-]*$"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "id"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "pattern": "^[a-z0-9][a-z0-9.+_-]*$"
+                      },
+                      "version": {
+                        "type": "string",
+                        "description": "Constraint such as '1.2', '>=1.2,<2', '^1.2', '~1.2'."
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "package_managers": {
+              "type": "array",
+              "items": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9.+_-]*$"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "id"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "pattern": "^[a-z0-9][a-z0-9.+_-]*$"
+                      },
+                      "version": {
+                        "type": "string",
+                        "description": "Constraint such as '1.2', '>=1.2,<2', '^1.2', '~1.2'."
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "tools": {
+              "type": "array",
+              "items": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9.+_-]*$"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "id"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "pattern": "^[a-z0-9][a-z0-9.+_-]*$"
+                      },
+                      "version": {
+                        "type": "string",
+                        "description": "Constraint such as '1.2', '>=1.2,<2', '^1.2', '~1.2'."
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "commands": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^[a-z0-9][a-z0-9_-]*$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/command"
+          }
+        },
+        "conventions": {
+          "$ref": "#/$defs/conventions"
+        },
+        "packs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/pack_ref"
+          }
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "source"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "source": {
+                "type": "string",
+                "description": "Project-relative POSIX path; no absolute paths, '..' or empty segments.",
+                "not": {
+                  "pattern": "(^/|\\\\|(^|/)\\.\\.(/|$))"
+                }
+              },
+              "field": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "value": {
+                "type": "string"
+              },
+              "confidence": {
+                "enum": [
+                  "confirmed",
+                  "inferred",
+                  "unknown"
+                ]
+              }
+            }
+          }
+        },
+        "unresolved": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
