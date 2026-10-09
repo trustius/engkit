@@ -21,4 +21,4 @@ Synthetic prompts. Run them as described in README.md.
 ### Argument cases
 
 - 1. With argument: `/implement-plan docs/plans/2026-10-09-export-rate-limiting.md` -> Reads the plan and replies with the approval request only (next slice, files to change, verification commands); nothing is edited yet.
-- 2. Without argument: `/implement-plan` -> Lists the plans in `docs/plans/` whose `## Progress` is missing or incomplete, newest first, and asks which one to implement.
+- 2. Without argument: `/implement-plan` -> Lists only the plans in `docs/plans/` that have `### Slice N:` headings and whose `## Progress` is missing or incomplete, newest first (never files named `*-ui-spec.md` or `*-ui-spec-<N>.md`), and asks which one to implement.

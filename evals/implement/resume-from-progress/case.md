@@ -35,7 +35,7 @@ Dimensions: factual correctness, evidence quality, unnecessary work. Case-specif
 1. The agent names slice 2 as the next slice (first without a `done` or `skipped` row) and
    reports its `failed` row.
 2. It retries slice 2 only after the user says so, and asks for a fresh approval for this
-   session listing the files and the commands of every remaining slice.
+   session listing the files and the commands of slice 2 (later slices only as expected).
 3. No file is written and no test is run before that yes; only read-only `git status` runs.
 4. Slice 1 files are not rewritten and `python -m unittest tests.test_truncate` is not
    re-run as slice work.

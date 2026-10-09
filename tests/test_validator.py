@@ -207,6 +207,33 @@ class CanonicalSkillsTest(TempDirTest):
                 self.assertTrue("no argument" in inputs or "without arguments" in inputs)
                 self.assertNotIn("$ARGUMENTS", text)
 
+    def test_plan_format_and_handoff_contracts(self):
+        def read(rel):
+            return " ".join((SKILLS_DIR / rel).read_text().split())
+
+        implement = read("implement-plan/SKILL.md")
+        plan = read("plan-implement/SKILL.md")
+        self.assertIn("### Slice", implement)
+        self.assertIn("### Slice", plan)
+        self.assertIn("-ui-spec.md", implement)
+        self.assertIn("-ui-spec-<N>.md", implement)
+        self.assertIn("expected, to be confirmed when that slice starts", implement)
+        self.assertIn("`blocked` (manual check pending)", implement)
+        self.assertIn("`/change-review`, then `/memory-save`", implement)
+        self.assertIn("### Slice", read("plan-implement/references/plan-format.md"))
+        self.assertIn("plan-format.md", plan)
+        self.assertIn("write no file", plan)
+        self.assertNotIn("even for a small change", plan)
+        self.assertIn("/design-ui", plan)
+        for name in ("bug-investigate", "stack-select"):
+            with self.subTest(skill=name):
+                text = read(f"{name}/SKILL.md")
+                self.assertIn("/plan-implement <plan file>", text)
+                self.assertIn("not yet implementable by /implement-plan", text)
+        self.assertIn("Invoked automatically", read("memory-save/SKILL.md"))
+        root_cause = read("bug-investigate/references/root-cause-analysis.md")
+        self.assertIn("Never apply it", root_cause)
+
     def test_skills_are_short_and_free_of_removed_features(self):
         for skill_name in sorted(self.EXPECTED):
             text = (SKILLS_DIR / skill_name / "SKILL.md").read_text()

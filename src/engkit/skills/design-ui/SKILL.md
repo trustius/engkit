@@ -1,6 +1,6 @@
 ---
 name: design-ui
-description: Produce a repository-grounded UI design spec (flows, text wireframes, component reuse, states, copy, accessibility, acceptance criteria) before any code is written. Use when a feature needs its screens, pages, commands or interactions designed in an existing project. Not for writing UI code, implementation plans, visual mockups or styling, choosing a framework, fixing a UI bug, or reviewing a diff.
+description: Produce a repository-grounded UI spec file (screens, flows, text wireframes, component reuse, states, copy, accessibility, acceptance criteria) before any code is written; run it first for a UI feature that has no spec yet. Use when a feature needs its screens, pages, commands or interactions designed in an existing project. Not for writing UI code, engineering slices or implementation plans (/plan-implement), visual mockups or styling, choosing a framework, fixing a UI bug, or reviewing a diff.
 ---
 
 # /design-ui

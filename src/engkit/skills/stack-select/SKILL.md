@@ -59,7 +59,8 @@ explicit, plus a test strategy.
 12. After the user chooses an option, write the adoption plan (chosen stack, test strategy,
     first steps) to `docs/plans/YYYY-MM-DD-<slug>.md` at the project root (slug from the task,
     lower-case hyphenated), following the shared Plans and Sensitive data rules. Report the
-    path. Before a choice, write no plan file.
+    path. The file has no slices, so `/implement-plan` cannot run it yet; the next step is
+    `/plan-implement <plan file>`. Before a choice, write no plan file.
 
 ## Output contract
 Fill in this template.
@@ -77,10 +78,10 @@ Claims:
 - untested assumption: <taken as given>
 Versions: unverified (no network) or verified with <source>
 Test strategy: <levels, tools, first tests>
-Plan file: docs/plans/<name>.md or none — no option chosen yet
+Plan file: docs/plans/<name>.md (not yet implementable by /implement-plan) or none — no option chosen yet
 Memory written: <entry> or none (not confirmed)
 Commands run: none
-Next step: <exactly one of /memory-save | /plan-implement, or none>
+Next step: <exactly one of /memory-save | /plan-implement <plan file>, or none>
 ```
 
 ## Guardrails

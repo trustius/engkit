@@ -20,7 +20,7 @@ Keep a small table and update it as evidence arrives.
 - **Bisection over history:** when a known-good revision exists, bisect commits. Ask before running a bisection that executes project code.
 - **Bisection over input:** shrink the failing input until removing anything makes the failure disappear.
 - **Boundary tracing:** check the data at each boundary (input parsing, persistence, serialization, external calls) to find where it first becomes wrong.
-- **Assertion insertion:** propose temporary assertions or logging at boundaries. Ask before editing files, and remove temporary instrumentation afterwards.
+- **Assertion insertion:** propose temporary assertions or logging at boundaries as text or a diff for the user to apply. Never apply it or edit files yourself.
 
 ## Intermittent and environment-dependent failures
 

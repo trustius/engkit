@@ -14,6 +14,8 @@ description: Save project-shared notes (decisions, gotchas, conventions, unfinis
 
 ## When to ask
 - No argument: show the candidate entries and write only after the user confirms.
+- Invoked automatically (not typed by the user as a command), even with a note: propose the
+  entry and write only after the user confirms.
 - Memory contradicts current code or the user's request: report both and ask which holds.
 - Information needed for an entry is missing or you would have to guess its reason or status.
 - `.engkit/memory/` does not exist: tell the user to run `engkit init`; do not create it.
@@ -26,8 +28,9 @@ small enough to read in full at task start.
 ## Inputs
 - Arguments: the text typed after the command (Claude Code passes it as `ARGUMENTS: ...`; when
   invoked automatically or in Codex, use the user's request).
-  - With an argument: save that note as an entry, applying the no-secrets and no-duplicate
-    rules (update an existing entry instead of duplicating).
+  - With an argument typed by the user as a command: save that note as an entry, applying the
+    no-secrets and no-duplicate rules (update an existing entry instead of duplicating). When
+    invoked automatically, propose it and write only after confirmation.
   - With no argument: propose candidate entries learned in this session (decisions with
     reasons, gotchas, unfinished task state, conventions written nowhere else), show them, and
     write only after the user confirms.

@@ -55,8 +55,9 @@ report honestly what was and was not verified.
    [root-cause analysis](references/root-cause-analysis.md) and apply it.
 10. If the fix needs more than one change, write the fix plan to
     `docs/plans/YYYY-MM-DD-<slug>.md` at the project root (slug from the task, lower-case
-    hyphenated), following the shared Plans and Sensitive data rules, and give its path. A
-    one-step fix stays in the chat.
+    hyphenated), following the shared Plans and Sensitive data rules, and give its path. The
+    file has no slices, so `/implement-plan` cannot run it yet; the next step is
+    `/plan-implement <plan file>`. A one-step fix stays in the chat.
 
 ## Output contract
 Fill in this template.
@@ -71,11 +72,11 @@ Evidence:
 Root cause: <statement> or Remaining hypotheses: <ranked list>
 Impact: <users, data, components>
 Proposed fix: <minimal change; regression risks> (not applied)
-Plan file: <path> or none (one-step fix)
+Plan file: <path> (not yet implementable by /implement-plan) or none (one-step fix)
 Commands run: <exact command - result> or none
 Commands not run (pending): <command - why>
 Open questions: <list>
-Next step: <exactly one of /plan-implement | /memory-save, or none>
+Next step: <exactly one of /plan-implement <plan file> | /memory-save, or none>
 ```
 
 ## Guardrails
