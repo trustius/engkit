@@ -64,6 +64,23 @@ Every command separates **verified fact**, **plausible hypothesis** and
 **untested assumption**. None authorizes edits, production access or
 destructive actions.
 
+### Rules every command follows
+
+- **Plans:** a plan of two or more steps is written to
+  `docs/plans/YYYY-MM-DD-<slug>.md` in your project (`/change-plan` always,
+  `/stack-select` once you choose an option, `/bug-investigate` when the fix needs
+  more than one change). An existing file is never overwritten: the name gets
+  `-2`, `-3`. Whether you commit `docs/plans/` is your choice; engkit never edits
+  your `.gitignore` or runs `git add`.
+- **No auto-run on servers:** nothing runs automatically on prod, staging, dev or
+  test environments. You get the exact steps instead; a read-only command (status,
+  logs) runs only after you approve that exact command.
+- **Sensitive data:** keys, tokens, passwords, connection strings, PII and PHI are
+  never printed or stored in chat, plans, memory or files; they appear as
+  `[REDACTED]` with their location.
+- **Incremental:** work proceeds in small steps, each checked and reported; the
+  command stops and asks at the first failed check.
+
 ## Usage
 
 ### Install commands
