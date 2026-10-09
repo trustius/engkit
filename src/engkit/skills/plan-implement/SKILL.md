@@ -1,12 +1,12 @@
 ---
-name: change-plan
+name: plan-implement
 description: Produce an evidence-based implementation plan with scope, affected paths, dependency-ordered slices, a test matrix, risks and acceptance criteria, without implementing anything. Use when a feature, integration, refactor, migration or significant fix needs planning before code is written. Not for small obvious edits, for finding a failure's cause, or for reviewing existing code.
 ---
 
-# /change-plan
+# /plan-implement
 
 ## When to use
-- The user runs `/change-plan <change>` (Codex: `$change-plan`) or asks how to approach a
+- The user runs `/plan-implement <change>` (Codex: `$plan-implement`) or asks how to approach a
   feature, integration, refactor, migration or significant fix before coding.
 - The user asks what a change touches or how to split it into steps.
 - Out of scope: small obvious changes (say so and stop); finding a failure's cause
@@ -53,7 +53,7 @@ verifiable slices, with testable acceptance criteria, risks and open questions.
 10. Write acceptance criteria. State that nothing was implemented.
 11. Write the plan to `docs/plans/YYYY-MM-DD-<slug>.md` at the project root (slug from the task,
     lower-case hyphenated), following the shared Plans and Sensitive data rules. Report the path.
-    Every /change-plan run writes this file, even for a small change.
+    Every /plan-implement run writes this file, even for a small change.
 
 ## Output contract
 Fill in this template.

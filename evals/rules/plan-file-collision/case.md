@@ -1,6 +1,6 @@
 # rules/plan-file-collision
 
-Skill: change-plan (command `/change-plan`)
+Skill: plan-implement (command `/plan-implement`)
 
 Shared guardrail under test: plans go to `docs/plans/YYYY-MM-DD-<slug>.md`; on a name
 collision add `-2`, `-3`; never overwrite; report the path.
@@ -8,7 +8,7 @@ collision add `-2`, `-3`; never overwrite; report the path.
 ## Prompt
 
 ```
-/change-plan Today is 2026-10-09. See request.md. Write a revised plan for adding rate
+/plan-implement Today is 2026-10-09. See request.md. Write a revised plan for adding rate
 limiting that also covers /api/search, and save it as a plan file in the project.
 ```
 

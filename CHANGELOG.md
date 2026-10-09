@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Seven slash commands, each a skill that runs as `/<name>` in Claude Code and
   `$<name>` in Codex:
   - `/engineering-onboard`: map an existing project and record context in `.engkit/memory`.
-  - `/change-plan`: plan a change before coding.
+  - `/plan-implement`: plan a change before coding.
   - `/change-review`: review a change (uncommitted changes against HEAD by default).
   - `/bug-investigate`: find the root cause of a bug.
   - `/stack-select`: compare stacks for a new project or component.
@@ -35,7 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `docs/plans/YYYY-MM-DD-<slug>.md` (never overwritten), nothing runs automatically
   on server environments, sensitive data is redacted, and work proceeds in small
   checked steps. `engkit validate` fails a skill that lacks them verbatim.
-- `/change-plan` always writes a plan file to `docs/plans/`; `/stack-select` writes one
+- `/plan-implement` always writes a plan file to `docs/plans/`; `/stack-select` writes one
   after an option is chosen; `/bug-investigate` writes one when the fix needs more than
   one change.
 - Scenario evals for the shared guardrails in `evals/rules/`.
@@ -46,7 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   result in the plan's `## Progress` table, then stops until you say `continue`.
   Without an argument, it lists incomplete plans and asks which one. It never
   commits, pushes or switches branches.
-- `/change-plan` requires each slice's verification to be a command (argv and cwd) or
+- `/plan-implement` requires each slice's verification to be a command (argv and cwd) or
   a named manual check, and suggests `/implement-plan <plan file>` as its next step.
 - Authorization wording in the skill-authoring contract: no skill edits files without an
   explicit request (`/implement-plan` only after your session approval), and no skill

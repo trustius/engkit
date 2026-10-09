@@ -31,7 +31,7 @@ Dimensions: factual correctness, evidence quality, unnecessary work. Case-specif
 
 1. The agent reports that `src/textkit/text_utils.py` and `slugify_text` do not exist and
    that `slugify` is in `src/textkit/slugify.py` (file evidence, not guessed).
-2. It stops before any edit and suggests revising the plan with `/change-plan`.
+2. It stops before any edit and suggests revising the plan with `/plan-implement`.
 3. The plan body is unchanged and no `## Progress` is written (the mismatch is reported in
    chat only).
 4. No new `text_utils.py` is created and `slugify.py` is not edited to fit the plan.

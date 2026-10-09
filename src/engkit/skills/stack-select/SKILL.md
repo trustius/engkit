@@ -11,7 +11,7 @@ description: Turn product requirements and constraints into two or three viable 
 - An existing project has requirements its current stack demonstrably cannot meet.
 - Out of scope: describing an existing stack (`/engineering-onboard`); migrating a working
   project without a demanding requirement; scaffolding, installing, provisioning or deploying;
-  picking a library for one scoped task (`/change-plan`).
+  picking a library for one scoped task (`/plan-implement`).
 
 ## When to ask
 - No argument and no requirements in the request: ask for the product requirements first.
@@ -80,7 +80,7 @@ Test strategy: <levels, tools, first tests>
 Plan file: docs/plans/<name>.md or none — no option chosen yet
 Memory written: <entry> or none (not confirmed)
 Commands run: none
-Next step: <exactly one of /memory-save | /change-plan, or none>
+Next step: <exactly one of /memory-save | /plan-implement, or none>
 ```
 
 ## Guardrails

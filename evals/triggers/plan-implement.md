@@ -1,10 +1,10 @@
-# Trigger evals: change-plan
+# Trigger evals: plan-implement
 
 Synthetic prompts. Run them as described in README.md.
 
 ## Should trigger
 
-1. /change-plan Plan how to add CSV export to the reports page before we write any code.
+1. /plan-implement Plan how to add CSV export to the reports page before we write any code.
 2. We need to integrate a payment provider. Break the work into slices with a test matrix.
 3. How should we approach splitting the monolith's billing module into a library? Plan only.
 4. Draft a rollout plan with rollback steps for changing the user table's primary key.
@@ -20,6 +20,6 @@ Synthetic prompts. Run them as described in README.md.
 
 ### Argument cases
 
-- 1. With argument: `/change-plan add CSV export to the reports page` -> Produces a plan only, nothing implemented, ending with Next step `/implement-plan <plan file>`.
-- 2. Without argument: `/change-plan` -> Asks what change to plan before doing anything else.
-- 3. Plan file: every `/change-plan` run writes its plan to `docs/plans/YYYY-MM-DD-<slug>.md` and reports the path.
+- 1. With argument: `/plan-implement add CSV export to the reports page` -> Produces a plan only, nothing implemented, ending with Next step `/implement-plan <plan file>`.
+- 2. Without argument: `/plan-implement` -> Asks what change to plan before doing anything else.
+- 3. Plan file: every `/plan-implement` run writes its plan to `docs/plans/YYYY-MM-DD-<slug>.md` and reports the path.

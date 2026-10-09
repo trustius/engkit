@@ -154,7 +154,7 @@ class CanonicalSkillsTest(TempDirTest):
         "bug-investigate",
         "implement-plan",
         "change-review",
-        "change-plan",
+        "plan-implement",
         "engineering-onboard",
         "stack-select",
         "memory-save",

@@ -14,7 +14,7 @@ description: Map an existing project's components, conventions and documented bu
   only after the user confirms.
 - Out of scope: new projects with no code (`/stack-select`); changing architecture or
   migrating tools; running builds, tests or scripts to learn about the project; debugging,
-  reviewing or planning a specific change (`/bug-investigate`, `/change-review`, `/change-plan`).
+  reviewing or planning a specific change (`/bug-investigate`, `/change-review`, `/plan-implement`).
 
 ## When to ask
 - Conflicting lockfiles or tools exist (for example two package managers): list the
@@ -54,7 +54,7 @@ is listed as unknown.
    line each: `- [Title](slug.md) — type — summary`. Update an existing entry instead of
    duplicating. Ask first if an entry would contradict an existing one. If `.engkit/memory/`
    does not exist, tell the user to run `engkit init` and do not create it.
-5. Suggest the next command, for example `/change-plan <task>`.
+5. Suggest the next command, for example `/plan-implement <task>`.
 
 ## Output contract
 Fill in this template.
@@ -72,7 +72,7 @@ Conventions: <convention - source>
 Ambiguities: <list>   Unknowns: <list>
 Memory written: <entries> or none (<reason>)
 Commands run: none
-Next step: /change-plan <task> or none
+Next step: /plan-implement <task> or none
 ```
 
 ## Guardrails

@@ -30,7 +30,7 @@ Allowed values: `pass`, `fail`, `not-run`. No agent runs have been performed yet
 |---|---|---|---|
 | bug-investigate | not-run | not-run | not-run |
 | change-review | not-run | not-run | not-run |
-| change-plan | not-run | not-run | not-run |
+| plan-implement | not-run | not-run | not-run |
 | engineering-onboard | not-run | not-run | not-run |
 | stack-select | not-run | not-run | not-run |
 | memory-save | not-run | not-run | not-run |

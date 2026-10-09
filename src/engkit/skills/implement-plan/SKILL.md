@@ -1,6 +1,6 @@
 ---
 name: implement-plan
-description: Implement a plan from `docs/plans/` one slice at a time, with a verification step and a progress record after each slice. Use after /change-plan when the user wants the plan's next slice built; it edits project files only after the user's session approval of the slice and its commands. Not for writing a plan, finding a failure's cause, reviewing a diff, or running anything on a server environment.
+description: Implement a plan from `docs/plans/` one slice at a time, with a verification step and a progress record after each slice. Use after /plan-implement when the user wants the plan's next slice built; it edits project files only after the user's session approval of the slice and its commands. Not for writing a plan, finding a failure's cause, reviewing a diff, or running anything on a server environment.
 ---
 
 # /implement-plan
@@ -8,7 +8,7 @@ description: Implement a plan from `docs/plans/` one slice at a time, with a ver
 ## When to use
 - The user runs `/implement-plan docs/plans/<name>.md` (Codex: `$implement-plan`) or asks to
   build the next slice of an existing plan.
-- Out of scope: writing or revising a plan (`/change-plan`); finding a failure's cause
+- Out of scope: writing or revising a plan (`/plan-implement`); finding a failure's cause
   (`/bug-investigate`); reviewing a diff (`/change-review`); plans outside `docs/plans/`
   (say so and stop); commands on a server environment (manual steps for the user).
 
@@ -36,13 +36,13 @@ every step stays small, approved and reviewable.
 
 ## Workflow
 1. Load: read the plan and the memory index. If the plan has no identifiable slices or a slice
-   has no verification, stop and suggest `/change-plan`. Next slice = first slice in plan
+   has no verification, stop and suggest `/plan-implement`. Next slice = first slice in plan
    order without a `done` or `skipped` row; retry a `failed` or `blocked` row only after the
    user says so; if every slice is done or skipped, say the plan is complete and stop.
 2. Preflight: `git status` is read-only and the only command run before approval. Ask before
    continuing if changes are not explained by `## Progress`. Check every affected path of the
    slice against the code. On a mismatch between plan and code, report the evidence in chat
-   only and stop before editing; suggest `/change-plan`. Never write Progress before approval.
+   only and stop before editing; suggest `/plan-implement`. Never write Progress before approval.
 3. Approval request: show the slice, the files it will create, edit or delete (including plan
    file: `## Progress`), and the verification commands (argv, cwd) of EVERY remaining slice.
    List only commands that run locally and contact no remote host. Never list one that reads
@@ -88,7 +88,7 @@ Commands not run (pending): <list> or none
 Open questions: <list> or none
 Status: <slice done | failed | blocked | waiting for approval>
 Next step: <exactly one: reply yes to approve the listed commands | say "continue" for slice N |
-  answer the open question (or /bug-investigate) | /change-review | /change-plan>
+  answer the open question (or /bug-investigate) | /change-review | /plan-implement>
 ```
 
 ## Guardrails

@@ -18,11 +18,11 @@ evals/
 ```
 
 Skill directories: `debugging/` (bug-investigate), `review/` (change-review),
-`planning/` (change-plan), `discovery/` (engineering-onboard),
+`planning/` (plan-implement), `discovery/` (engineering-onboard),
 `selection/` (stack-select), `memory/` (memory-save), `implement/` (implement-plan).
 
 The `rules/` area holds cross-skill guardrail cases. Each case names the command it uses
-(for example `/change-plan`) in its Prompt; the four shared guardrails are plan file naming,
+(for example `/plan-implement`) in its Prompt; the four shared guardrails are plan file naming,
 no auto-run on servers, sensitive data redaction and stopping after a failed check.
 
 The `implement/` area holds scenario cases for `implement-plan` (`/implement-plan`). Each
@@ -124,8 +124,8 @@ No agent runs have been performed yet.
 | debugging/duplicate-job-processing | bug-investigate | not-run | not-run | not-run | not-run |
 | review/lost-update-race | change-review | not-run | not-run | not-run | not-run |
 | review/n-plus-one-misleading-tests | change-review | not-run | not-run | not-run | not-run |
-| planning/api-integration-idempotency | change-plan | not-run | not-run | not-run | not-run |
-| planning/schema-migration | change-plan | not-run | not-run | not-run | not-run |
+| planning/api-integration-idempotency | plan-implement | not-run | not-run | not-run | not-run |
+| planning/schema-migration | plan-implement | not-run | not-run | not-run | not-run |
 | discovery/mixed-monorepo | engineering-onboard | not-run | not-run | not-run | not-run |
 | discovery/unknown-stack | engineering-onboard | not-run | not-run | not-run | not-run |
 | selection/constrained-new-project | stack-select | not-run | not-run | not-run | not-run |
@@ -133,8 +133,8 @@ No agent runs have been performed yet.
 | selection/conflicting-requirements | stack-select | not-run | not-run | not-run | not-run |
 | memory/recall-prior-decision | memory-save | not-run | not-run | not-run | not-run |
 | memory/no-secrets | memory-save | not-run | not-run | not-run | not-run |
-| rules/plan-file-collision | change-plan | not-run | not-run | not-run | not-run |
-| rules/no-auto-run-on-staging | change-plan | not-run | not-run | not-run | not-run |
+| rules/plan-file-collision | plan-implement | not-run | not-run | not-run | not-run |
+| rules/no-auto-run-on-staging | plan-implement | not-run | not-run | not-run | not-run |
 | rules/redact-key-in-log | bug-investigate | not-run | not-run | not-run | not-run |
 | rules/stop-after-failed-check | bug-investigate | not-run | not-run | not-run | not-run |
 | implement/no-edit-before-approval | implement-plan | not-run | not-run | not-run | not-run |

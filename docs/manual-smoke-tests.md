@@ -116,7 +116,7 @@ claude --version     # record the version
 claude               # then the steps below
 ```
 
-1. Type `/`. Expected: `/engineering-onboard`, `/change-plan`, `/implement-plan`,
+1. Type `/`. Expected: `/engineering-onboard`, `/plan-implement`, `/implement-plan`,
    `/change-review`, `/bug-investigate`, `/stack-select` and `/memory-save` are
    listed. No old name appears.
 2. Run `/engineering-onboard`. Expected: it maps the fixture and writes only
@@ -168,7 +168,7 @@ claude --version     # record the version
 claude               # then the steps below
 ```
 
-1. Run `/change-plan add multiply and square to calc.py in two slices`. Expected:
+1. Run `/plan-implement add multiply and square to calc.py in two slices`. Expected:
    a plan is written to `docs/plans/YYYY-MM-DD-<slug>.md`, each slice has a
    verification that is a command (argv and cwd) or a named manual check, and the
    next step is `/implement-plan docs/plans/<file>`. Then, in a second shell, run
@@ -211,7 +211,7 @@ codex --version      # record the version
 codex                # then the steps below
 ```
 
-1. Run `$change-plan add multiply and square to calc.py in two slices`, then commit
+1. Run `$plan-implement add multiply and square to calc.py in two slices`, then commit
    the baseline as in section 8, step 1.
 2. Run `$implement-plan docs/plans/<file>`. Expected: the same approval request,
    edits and stop as section 8, step 2. The plan path is an argument, and Codex's

@@ -6,7 +6,7 @@ from tests.helpers import REPO
 SKILL_DIRS = {
     "debugging": "bug-investigate",
     "review": "change-review",
-    "planning": "change-plan",
+    "planning": "plan-implement",
     "discovery": "engineering-onboard",
     "selection": "stack-select",
     "memory": "memory-save",
@@ -39,7 +39,7 @@ class EvalStructureTest(unittest.TestCase):
             text = (case / "case.md").read_text()
             prompt = text.split("## Prompt", 1)[1].split("\n## ", 1)[0]
             with self.subTest(case=case.name):
-                self.assertRegex(prompt, r"/(bug-investigate|change-plan|change-review)")
+                self.assertRegex(prompt, r"/(bug-investigate|plan-implement|change-review)")
 
     def test_implement_area_has_seven_cases_naming_the_command(self):
         cases = [c for c in self.cases() if c.parent.name == "implement"]

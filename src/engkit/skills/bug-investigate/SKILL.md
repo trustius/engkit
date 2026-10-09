@@ -11,7 +11,7 @@ description: Investigate a software bug and find its root cause from code, logs,
 - A production error needs a root-cause explanation (investigation only).
 - A failure is intermittent, environment-dependent or appeared after a change.
 - Out of scope: reviewing a diff with no failure (`/change-review`); designing a feature
-  (`/change-plan`); tuning performance with no defect; cleanup; operating on
+  (`/plan-implement`); tuning performance with no defect; cleanup; operating on
   production (restart, redeploy, migrate, alter data).
 
 ## When to ask
@@ -75,7 +75,7 @@ Plan file: <path> or none (one-step fix)
 Commands run: <exact command - result> or none
 Commands not run (pending): <command - why>
 Open questions: <list>
-Next step: <exactly one of /change-plan | /memory-save, or none>
+Next step: <exactly one of /plan-implement | /memory-save, or none>
 ```
 
 ## Guardrails

@@ -9,7 +9,7 @@ description: Review a code change (uncommitted work, diff or commit range) with 
 - A diff, pull request, patch, commit range or list of changed files is given for review.
 - The user runs `/change-review` (Codex: `$change-review`) or asks for a review of a change.
 - Out of scope: debugging a failure with no change under review (`/bug-investigate`);
-  planning new work (`/change-plan`); whole-codebase audits; style-only passes;
+  planning new work (`/plan-implement`); whole-codebase audits; style-only passes;
   posting comments, approving, merging or pushing.
 
 ## When to ask

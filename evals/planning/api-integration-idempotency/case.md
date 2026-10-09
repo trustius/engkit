@@ -1,6 +1,6 @@
 # planning/api-integration-idempotency
 
-Skill: change-plan
+Skill: plan-implement
 
 ## Prompt
 
@@ -50,7 +50,7 @@ facts), regression coverage (test matrix), unnecessary work. Case-specific:
    charge already applied, duplicate submission (double-click), provider 5xx, key reuse.
 6. Rollout: feature flag or staged rollout and rollback path; secrets via configuration
    (placeholder only).
-7. The `/change-plan` run writes its plan to `docs/plans/YYYY-MM-DD-<slug>.md` and
+7. The `/plan-implement` run writes its plan to `docs/plans/YYYY-MM-DD-<slug>.md` and
    reports the path.
 
 ## Disallowed hallucinations

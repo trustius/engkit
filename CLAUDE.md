@@ -65,7 +65,7 @@ an MCP integration or an LLM client.
 Concerns that stay separate:
 
 1. **Skills** (`src/engkit/skills/<name>/SKILL.md`): stack-neutral workflows, exposed
-   as slash commands. Built-in commands: `/engineering-onboard`, `/change-plan`,
+   as slash commands. Built-in commands: `/engineering-onboard`, `/plan-implement`,
    `/implement-plan`, `/change-review`, `/bug-investigate`, `/stack-select`,
    `/memory-save` (`$name` in Codex). Seven in total. Old names (`project-discovery`, `implementation-planning`,
    `systematic-debugging`, `stack-selection`, `project-memory`) were dropped

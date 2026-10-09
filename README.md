@@ -27,7 +27,7 @@ It maps the project and records what it learns in `.engkit/memory/`. A typical
 flow after that:
 
 ```text
-/change-plan add rate limiting to the export API
+/plan-implement add rate limiting to the export API
 /change-review
 /bug-investigate checkout test fails on CI only
 /memory-save
@@ -50,7 +50,7 @@ dependency (installed automatically). `git` on `PATH` is needed only for
 | Command | Purpose | Without arguments |
 |---|---|---|
 | `/engineering-onboard` | Map an existing project and record context in `.engkit/memory` | Maps the whole project. An argument limits it to a path or component |
-| `/change-plan` | Plan a change before coding | Asks what to plan |
+| `/plan-implement` | Plan a change before coding | Asks what to plan |
 | `/implement-plan` | Build one slice of a plan in `docs/plans/`, verify it and record progress | Lists incomplete plans, newest first, and asks which one |
 | `/change-review` | Review a change | Reviews uncommitted changes against HEAD. If the tree is clean, asks for a range or PR |
 | `/bug-investigate` | Find the root cause of a bug | Asks for the symptom |
@@ -71,7 +71,7 @@ commands. None authorizes production access or destructive actions.
 A change that needs more than one step runs in three commands:
 
 ```text
-/change-plan add rate limiting to the export API     # writes docs/plans/YYYY-MM-DD-<slug>.md
+/plan-implement add rate limiting to the export API     # writes docs/plans/YYYY-MM-DD-<slug>.md
 /implement-plan docs/plans/YYYY-MM-DD-<slug>.md      # builds slice 1 after your approval
 /change-review                                       # reviews the uncommitted changes
 ```
@@ -88,7 +88,7 @@ you do that after review. In Codex, type `$implement-plan` instead.
 ### Rules every command follows
 
 - **Plans:** a plan of two or more steps is written to
-  `docs/plans/YYYY-MM-DD-<slug>.md` in your project (`/change-plan` always,
+  `docs/plans/YYYY-MM-DD-<slug>.md` in your project (`/plan-implement` always,
   `/stack-select` once you choose an option, `/bug-investigate` when the fix needs
   more than one change). An existing file is never overwritten: the name gets
   `-2`, `-3`. Whether you commit `docs/plans/` is your choice; engkit never edits
@@ -128,7 +128,7 @@ To install a single command, use `engkit install`:
 ```bash
 engkit install bug-investigate --target claude --project-dir ~/code/my-app
 engkit install change-review --target codex --project-dir ~/code/my-app
-engkit install change-plan --target all --project-dir ~/code/my-app
+engkit install plan-implement --target all --project-dir ~/code/my-app
 ```
 
 Use `--global` instead of `--project-dir` to write to your user account
