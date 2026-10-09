@@ -96,8 +96,9 @@ then `shasum -a 256`). Keep `build` in the `dev` extra at the same version.
 
 ## If something goes wrong
 
-- A re-run of a partly failed release is safe: the TestPyPI step skips files
-  that already exist.
+- **A job failed:** re-run only the failed jobs of the same workflow run. The
+  TestPyPI step does not skip existing files, so if TestPyPI already has the files
+  from a failed attempt, bump the version and tag again.
 - **Wrong version or a broken build on TestPyPI:** this is harmless. Fix the
   problem, bump the version, and release again. TestPyPI also rejects a reused
   version number, so always bump.
