@@ -12,7 +12,7 @@ description: Investigate software bugs and identify root causes from code, repro
 - A failure is intermittent, environment-dependent or appeared after a change.
 
 Out of scope:
-- Reviewing a diff with no reported failure (use `code-review`).
+- Reviewing a diff with no reported failure (use `change-review`).
 - Designing a new feature or large refactor (use `implementation-planning`).
 - Performance tuning without a concrete defect, or general code-quality cleanup.
 - Operating on production systems: this skill never restarts, redeploys, migrates or alters live data.

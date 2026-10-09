@@ -8,7 +8,7 @@ import shutil
 import sys
 from pathlib import Path
 
-from engkit import __version__, installer, platforms
+from engkit import __version__, installer, memory, platforms
 from engkit.catalog import Skill, discover
 from engkit.fsutil import check_no_symlinks
 from engkit.resources import resource_origin
@@ -50,7 +50,8 @@ def run(
     report = Report()
     report.add_section("Environment", _environment_items(resource_root, project_root))
     catalog = discover(resource_root)
-    catalog_items = [("error", issue.format()) for issue in catalog.issues if issue.level == "error"]
+    errors = [issue for issue in catalog.issues if issue.level == "error"]
+    catalog_items = [("error", issue.format()) for issue in errors]
     names = ", ".join(skill.name for skill in catalog.skills)
     catalog_items.append(("info", f"{len(catalog.skills)} canonical skill(s): {names}"))
     report.add_section("Catalog", catalog_items)
@@ -68,6 +69,7 @@ def run(
         if instructions.exists():
             message = f"{platform.instructions_file} present (engkit never modifies it)"
             report.add_section(f"Instructions: {platform.instructions_file}", [("info", message)])
+    report.add_section("Project memory", [memory.status(project_root)])
     return report.data
 
 
@@ -82,9 +84,10 @@ def _environment_items(resource_root: Path, project_root: Path) -> list[tuple[st
 
 def _cli_items(platform: platforms.Platform) -> list[tuple[str, str]]:
     executable = shutil.which(platform.cli)
-    items = [("info", f"{platform.display} CLI: {executable or 'not found on PATH'} (not executed)")]
+    location = executable or "not found on PATH"
+    items = [("info", f"{platform.display} CLI: {location} (not executed)")]
     if not executable:
-        message = f"{platform.display} discovery cannot be verified here; see docs/manual-smoke-tests.md"
+        message = f"{platform.display} discovery not verifiable here (docs/manual-smoke-tests.md)"
         items.append(("warning", message))
     return items
 

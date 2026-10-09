@@ -17,7 +17,7 @@ evals/
     results/                completed result files, one per run (created when runs happen)
 ```
 
-Skill directories: `debugging/` (systematic-debugging), `review/` (code-review),
+Skill directories: `debugging/` (systematic-debugging), `review/` (change-review),
 `planning/` (implementation-planning), `discovery/` (project-discovery),
 `selection/` (stack-selection).
 
@@ -112,8 +112,8 @@ No agent runs have been performed yet.
 |---|---|---|---|---|---|
 | debugging/cookie-domain-mismatch | systematic-debugging | not-run | not-run | not-run | not-run |
 | debugging/duplicate-job-processing | systematic-debugging | not-run | not-run | not-run | not-run |
-| review/lost-update-race | code-review | not-run | not-run | not-run | not-run |
-| review/n-plus-one-misleading-tests | code-review | not-run | not-run | not-run | not-run |
+| review/lost-update-race | change-review | not-run | not-run | not-run | not-run |
+| review/n-plus-one-misleading-tests | change-review | not-run | not-run | not-run | not-run |
 | planning/api-integration-idempotency | implementation-planning | not-run | not-run | not-run | not-run |
 | planning/schema-migration | implementation-planning | not-run | not-run | not-run | not-run |
 | discovery/mixed-monorepo | project-discovery | not-run | not-run | not-run | not-run |

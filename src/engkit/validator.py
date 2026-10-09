@@ -1,4 +1,4 @@
-"""Validate canonical skills. Read-only: no network, no writes, never executes files."""
+"""Read-only validation of canonical skills; never executes files."""
 
 from __future__ import annotations
 
@@ -13,15 +13,16 @@ from engkit.catalog import (
     CatalogResult,
     Issue,
     Skill,
-    discover,
+    discover_dir,
 )
 from engkit.fsutil import is_within
+from engkit.platforms import builtin_collisions
 
 REQUIRED_SECTIONS = (
     "When to use",
+    "When to ask",
     "Objective",
     "Inputs",
-    "Project context (optional)",
     "Workflow",
     "Output contract",
     "Guardrails",
@@ -29,7 +30,9 @@ REQUIRED_SECTIONS = (
 PORTABLE_KEYS = {"name", "description", "license", "metadata", "allowed-tools", "compatibility"}
 LINK_RE = re.compile(r"\[[^\]]*\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
 HEADING_RE = re.compile(r"^##\s+(.+?)\s*$", re.MULTILINE)
-SKILL_MD_SOFT_LIMIT = 500
+URL_SCHEME_RE = re.compile(r"[a-z][a-z0-9+.-]*:")
+CODE_RE = re.compile(r"```.*?```|`[^`\n]*`", re.DOTALL)
+SKILL_MD_MAX_LINES = 120
 
 
 def validate_name(name: object) -> str | None:
@@ -37,46 +40,79 @@ def validate_name(name: object) -> str | None:
         return "name must be a non-empty string"
     if len(name) > NAME_MAX:
         return f"name exceeds {NAME_MAX} characters"
-    if not NAME_RE.match(name):
-        return "name must use lower-case ASCII letters, digits and single hyphens (no leading/trailing hyphen)"
+    if not NAME_RE.fullmatch(name):
+        return (
+            "name must use lower-case ASCII letters, digits and single hyphens "
+            "(no leading/trailing hyphen)"
+        )
     return None
 
 
-def validate_skill(skill: Skill, toolkit_root: Path) -> list[Issue]:
+def _check_names(skill: Skill) -> list[Issue]:
     issues: list[Issue] = []
     skill_md = skill.path / "SKILL.md"
-    meta = skill.metadata
+    name = skill.metadata.get("name")
+    message = validate_name(name)
+    if message:
+        issues.append(Issue(skill_md, message))
+    elif name != skill.path.name:
+        issues.append(
+            Issue(skill_md, f"name '{name}' does not match directory '{skill.path.name}'")
+        )
+    directory_message = validate_name(skill.path.name)
+    if directory_message:
+        issues.append(Issue(skill.path, f"directory name invalid: {directory_message}"))
+    collisions = builtin_collisions(skill.path.name)
+    if collisions:
+        platforms = ", ".join(collisions)
+        message = f"name collides with a built-in skill of: {platforms}; choose another name"
+        issues.append(Issue(skill_md, message))
+    return issues
 
-    err = validate_name(meta.get("name"))
-    if err:
-        issues.append(Issue(skill_md, err))
-    elif meta["name"] != skill.path.name:
-        issues.append(Issue(skill_md, f"name '{meta['name']}' does not match directory '{skill.path.name}'"))
-    dir_err = validate_name(skill.path.name)
-    if dir_err:
-        issues.append(Issue(skill.path, f"directory name invalid: {dir_err}"))
 
-    desc = meta.get("description")
-    if not isinstance(desc, str) or not desc.strip():
+def _check_metadata(skill: Skill) -> list[Issue]:
+    issues: list[Issue] = []
+    skill_md = skill.path / "SKILL.md"
+    description = skill.metadata.get("description")
+    if not isinstance(description, str) or not description.strip():
         issues.append(Issue(skill_md, "description must be a non-empty string"))
-    elif len(desc) > DESCRIPTION_MAX:
+    elif len(description) > DESCRIPTION_MAX:
         issues.append(Issue(skill_md, f"description exceeds {DESCRIPTION_MAX} characters"))
-
-    for key in sorted(set(meta) - PORTABLE_KEYS):
+    for key in sorted(set(skill.metadata) - PORTABLE_KEYS):
         issues.append(Issue(skill_md, f"non-portable frontmatter key '{key}'", "warning"))
+    return issues
 
+
+def _check_sections(skill: Skill) -> list[Issue]:
+    skill_md = skill.path / "SKILL.md"
     headings = HEADING_RE.findall(skill.body)
-    missing = [s for s in REQUIRED_SECTIONS if s not in headings]
+    missing = [section for section in REQUIRED_SECTIONS if section not in headings]
     if missing:
-        issues.append(Issue(skill_md, "missing required sections: " + ", ".join(f"'## {m}'" for m in missing)))
-    else:
-        order = [headings.index(s) for s in REQUIRED_SECTIONS]
-        if order != sorted(order):
-            issues.append(Issue(skill_md, "required sections are out of order", "warning"))
+        listed = ", ".join(f"'## {section}'" for section in missing)
+        return [Issue(skill_md, f"missing required sections: {listed}")]
+    positions = [headings.index(section) for section in REQUIRED_SECTIONS]
+    if positions != sorted(positions):
+        return [Issue(skill_md, "required sections are out of order", "warning")]
+    return []
 
-    if skill.body.count("\n") > SKILL_MD_SOFT_LIMIT:
-        issues.append(Issue(skill_md, f"body exceeds {SKILL_MD_SOFT_LIMIT} lines; move detail to references/", "warning"))
 
+def _check_length(skill: Skill) -> list[Issue]:
+    skill_md = skill.path / "SKILL.md"
+    line_count = len(skill_md.read_text(encoding="utf-8").splitlines())
+    if line_count <= SKILL_MD_MAX_LINES:
+        return []
+    message = (
+        f"SKILL.md has {line_count} lines (max {SKILL_MD_MAX_LINES}); move detail to references/"
+    )
+    return [Issue(skill_md, message)]
+
+
+def validate_skill(skill: Skill, toolkit_root: Path) -> list[Issue]:
+    skill_md = skill.path / "SKILL.md"
+    issues = _check_names(skill)
+    issues.extend(_check_metadata(skill))
+    issues.extend(_check_sections(skill))
+    issues.extend(_check_length(skill))
     issues.extend(_check_links(skill, skill_md))
     issues.extend(_check_tree(skill.path, toolkit_root))
     return issues
@@ -85,8 +121,9 @@ def validate_skill(skill: Skill, toolkit_root: Path) -> list[Issue]:
 def _check_links(skill: Skill, skill_md: Path) -> list[Issue]:
     issues = []
     skill_root = skill.path.resolve()
-    for target in LINK_RE.findall(skill.body):
-        if re.match(r"^[a-z][a-z0-9+.-]*:", target) or target.startswith("#"):
+    # Links inside code are examples, not references.
+    for target in LINK_RE.findall(CODE_RE.sub("", skill.body)):
+        if URL_SCHEME_RE.match(target) or target.startswith("#"):
             continue  # URL or in-page anchor
         target = target.split("#", 1)[0]
         if not target:
@@ -102,46 +139,68 @@ def _check_links(skill: Skill, skill_md: Path) -> list[Issue]:
     return issues
 
 
+def _check_entry(path: Path, toolkit_root: Path, skill_root: Path) -> Issue | None:
+    if not path.is_symlink():
+        if path.is_dir() or path.is_file():
+            return None
+        return Issue(path, "special files are not allowed in skills")
+    target = Path(os.path.realpath(path))
+    link = os.readlink(path)
+    if not is_within(target, toolkit_root):
+        return Issue(path, f"symlink escapes toolkit root (-> {link})")
+    if not is_within(target, skill_root):
+        return Issue(path, f"symlink escapes the skill directory (-> {link})")
+    # The installer refuses any symlink, so validation must fail too.
+    return Issue(path, "symlinks cannot be installed; replace with a regular file")
+
+
+def _raise_walk_error(exc: OSError) -> None:
+    raise exc
+
+
 def _check_tree(skill_dir: Path, toolkit_root: Path) -> list[Issue]:
     issues = []
     root = toolkit_root.resolve()
     skill_root = skill_dir.resolve()
-    for dirpath, dirnames, filenames in os.walk(skill_dir, followlinks=False):
-        for name in dirnames + filenames:
-            p = Path(dirpath) / name
-            if not p.is_symlink():
-                if not (p.is_dir() or p.is_file()):
-                    issues.append(Issue(p, "special files are not allowed in skills"))
-                continue
-            target = Path(os.path.realpath(p))
-            if not is_within(target, root):
-                issues.append(Issue(p, f"symlink escapes toolkit root (-> {os.readlink(p)})"))
-            elif not is_within(target, skill_root):
-                issues.append(Issue(p, f"symlink escapes the skill directory (-> {os.readlink(p)})"))
-            else:
-                # The installer refuses any symlink, so validation must fail too.
-                issues.append(Issue(p, "symlinks cannot be installed; replace with a regular file"))
+    try:
+        for dirpath, dirnames, filenames in os.walk(
+            skill_dir, followlinks=False, onerror=_raise_walk_error
+        ):
+            for name in dirnames + filenames:
+                issue = _check_entry(Path(dirpath) / name, root, skill_root)
+                if issue is not None:
+                    issues.append(issue)
+    except OSError as exc:
+        issues.append(Issue(skill_dir, f"cannot read skill directory: {exc}"))
     return issues
 
 
 def validate(toolkit_root: Path, name: str | None = None) -> CatalogResult:
-    """Validate all skills (or one). Returns a CatalogResult whose issues include catalog problems."""
-    catalog = discover(toolkit_root)
-    if name is not None:
-        err = validate_name(name)
-        if err:
-            return CatalogResult(issues=[Issue(Path(name), f"invalid skill name: {err}")])
-        selected = [s for s in catalog.skills if s.path.name == name]
-        catalog_issues = [i for i in catalog.issues if _issue_in(i, toolkit_root / "skills" / name)]
-        if not selected and not catalog_issues:
-            catalog_issues.append(Issue(toolkit_root / "skills" / name, "unknown skill"))
-    else:
+    """Validate all skills (or one); issues include catalog problems."""
+    return validate_dir(toolkit_root / "skills", toolkit_root, name)
+
+
+def validate_dir(
+    skills_dir: Path, containment_root: Path, name: str | None = None
+) -> CatalogResult:
+    """Validate skills under ``skills_dir``; symlinks must stay inside ``containment_root``."""
+    catalog = discover_dir(skills_dir)
+    if name is None:
         selected = catalog.skills
         catalog_issues = list(catalog.issues)
-    out = CatalogResult(skills=selected, issues=catalog_issues)
+    else:
+        message = validate_name(name)
+        if message:
+            return CatalogResult(issues=[Issue(Path(name), f"invalid skill name: {message}")])
+        selected = [skill for skill in catalog.skills if skill.path.name == name]
+        skill_path = skills_dir / name
+        catalog_issues = [issue for issue in catalog.issues if _issue_in(issue, skill_path)]
+        if not selected and not catalog_issues:
+            catalog_issues.append(Issue(skill_path, "unknown skill"))
+    result = CatalogResult(skills=selected, issues=catalog_issues)
     for skill in selected:
-        out.issues.extend(validate_skill(skill, toolkit_root))
-    return out
+        result.issues.extend(validate_skill(skill, containment_root))
+    return result
 
 
 def _issue_in(issue: Issue, path: Path) -> bool:

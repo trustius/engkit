@@ -3,10 +3,21 @@ import unittest
 
 from tests.helpers import REPO
 
-SKILL_DIRS = {"debugging": "systematic-debugging", "review": "code-review", "planning": "implementation-planning",
-              "discovery": "project-discovery", "selection": "stack-selection"}
-SECTIONS = ("## Prompt", "## Fixture", "## Rubric", "## Critical expected findings", "## Disallowed hallucinations",
-            "## Pass threshold")
+SKILL_DIRS = {
+    "debugging": "systematic-debugging",
+    "review": "change-review",
+    "planning": "implementation-planning",
+    "discovery": "project-discovery",
+    "selection": "stack-selection",
+}
+SECTIONS = (
+    "## Prompt",
+    "## Fixture",
+    "## Rubric",
+    "## Critical expected findings",
+    "## Disallowed hallucinations",
+    "## Pass threshold",
+)
 
 
 class EvalStructureTest(unittest.TestCase):
@@ -37,7 +48,14 @@ class EvalStructureTest(unittest.TestCase):
 
     def test_fixtures_are_not_executable(self):
         import os
+
         for p in (REPO / "evals").rglob("*"):
             if p.is_file():
                 self.assertFalse(os.access(p, os.X_OK), p)
-                self.assertIsNone(re.search(r"(?i)(api[_-]?key|secret)\s*[:=]\s*['\"]?[A-Za-z0-9]{20,}", p.read_text(errors="ignore")), p)
+                self.assertIsNone(
+                    re.search(
+                        r"(?i)(api[_-]?key|secret)\s*[:=]\s*['\"]?[A-Za-z0-9]{20,}",
+                        p.read_text(errors="ignore"),
+                    ),
+                    p,
+                )

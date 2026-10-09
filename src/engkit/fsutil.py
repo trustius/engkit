@@ -1,10 +1,8 @@
-"""Filesystem helpers shared by the installer and generator.
-
-Everything here uses the standard library only and never executes files.
-"""
+"""Standard-library filesystem helpers; nothing here executes files."""
 
 from __future__ import annotations
 
+import contextlib
 import ctypes
 import ctypes.util
 import errno
@@ -26,11 +24,11 @@ def sha256_bytes(data: bytes) -> str:
 
 
 def sha256_file(path: Path) -> str:
-    h = hashlib.sha256()
-    with open(path, "rb") as fh:
-        for chunk in iter(lambda: fh.read(65536), b""):
-            h.update(chunk)
-    return h.hexdigest()
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for chunk in iter(lambda: handle.read(65536), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def is_within(path: Path, root: Path) -> bool:
@@ -49,46 +47,70 @@ def safe_relpath(value: str, what: str = "path") -> str:
         raise UnsafePathError(f"{what} {value!r} contains a backslash or NUL")
     if value.startswith("/") or (len(value) > 1 and value[1] == ":"):
         raise UnsafePathError(f"{what} {value!r} must be relative")
-    parts = value.split("/")
     if value == ".":
         return "."
-    if any(p in ("", "..") for p in parts) or "." in parts:
+    parts = value.split("/")
+    if "" in parts or ".." in parts or "." in parts:
         raise UnsafePathError(f"{what} {value!r} must not contain '.', '..' or empty segments")
     return value
 
 
-def tree_snapshot(root: Path, *, allow_symlinks: bool = False) -> dict[str, str]:
-    """Map relative POSIX path -> sha256 for every regular file below ``root``.
+def _raise_walk_error(exc: OSError) -> None:
+    # os.walk ignores errors by default, which would hide unreadable directories.
+    raise exc
 
-    Directories are implied by their files; empty directories are recorded with
-    the marker ``"<dir>"`` so they participate in comparisons. Symlinks and
-    special files raise UnsafePathError unless ``allow_symlinks`` (then they
-    are recorded as ``"<symlink:target>"`` without being followed).
+
+def _walk(root: Path):
+    return os.walk(root, followlinks=False, onerror=_raise_walk_error)
+
+
+def _symlink_marker(path: Path) -> str:
+    return f"<symlink:{os.readlink(path)}>"
+
+
+def _snapshot_directories(
+    base: Path, rel_base: str, dirnames: list[str], allow_symlinks: bool, result: dict[str, str]
+) -> None:
+    for name in sorted(dirnames):
+        path = base / name
+        if not path.is_symlink():
+            continue
+        if not allow_symlinks:
+            raise UnsafePathError(f"refusing symlink: {path}")
+        result[_join(rel_base, name)] = _symlink_marker(path)
+    dirnames[:] = sorted(name for name in dirnames if not (base / name).is_symlink())
+
+
+def _snapshot_files(
+    base: Path, rel_base: str, filenames: list[str], allow_symlinks: bool, result: dict[str, str]
+) -> None:
+    for name in sorted(filenames):
+        path = base / name
+        mode = os.lstat(path).st_mode
+        if stat.S_ISLNK(mode):
+            if not allow_symlinks:
+                raise UnsafePathError(f"refusing symlink: {path}")
+            result[_join(rel_base, name)] = _symlink_marker(path)
+        elif stat.S_ISREG(mode):
+            result[_join(rel_base, name)] = sha256_file(path)
+        else:
+            raise UnsafePathError(f"refusing special file: {path}")
+
+
+def tree_snapshot(root: Path, *, allow_symlinks: bool = False) -> dict[str, str]:
+    """Map relative POSIX path to sha256 for every regular file below ``root``.
+
+    Empty directories are recorded as "<dir>". Symlinks and special files raise
+    UnsafePathError unless ``allow_symlinks`` (then recorded without being followed).
     """
     result: dict[str, str] = {}
-    for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
+    for dirpath, dirnames, filenames in _walk(root):
         base = Path(dirpath)
         rel_base = base.relative_to(root).as_posix()
-        for name in sorted(dirnames):
-            p = base / name
-            if p.is_symlink():
-                if not allow_symlinks:
-                    raise UnsafePathError(f"refusing symlink: {p}")
-                result[_join(rel_base, name)] = f"<symlink:{os.readlink(p)}>"
-        dirnames[:] = sorted(d for d in dirnames if not (base / d).is_symlink())
+        _snapshot_directories(base, rel_base, dirnames, allow_symlinks, result)
         if not dirnames and not filenames and base != root:
             result[rel_base] = "<dir>"
-        for name in sorted(filenames):
-            p = base / name
-            st = os.lstat(p)
-            if stat.S_ISLNK(st.st_mode):
-                if not allow_symlinks:
-                    raise UnsafePathError(f"refusing symlink: {p}")
-                result[_join(rel_base, name)] = f"<symlink:{os.readlink(p)}>"
-                continue
-            if not stat.S_ISREG(st.st_mode):
-                raise UnsafePathError(f"refusing special file: {p}")
-            result[_join(rel_base, name)] = sha256_file(p)
+        _snapshot_files(base, rel_base, filenames, allow_symlinks, result)
     return result
 
 
@@ -97,12 +119,9 @@ def _join(rel_base: str, name: str) -> str:
 
 
 def copy_tree_regular(src: Path, dst: Path) -> None:
-    """Copy regular files and directories only. ``dst`` must not exist.
-
-    Symlinks and special files are refused (callers validate sources first).
-    """
+    """Copy regular files and directories only; ``dst`` must not exist."""
     os.mkdir(dst)
-    for dirpath, dirnames, filenames in os.walk(src, followlinks=False):
+    for dirpath, dirnames, filenames in _walk(src):
         base = Path(dirpath)
         out = dst / base.relative_to(src)
         for name in sorted(dirnames):
@@ -110,23 +129,23 @@ def copy_tree_regular(src: Path, dst: Path) -> None:
                 raise UnsafePathError(f"refusing symlink: {base / name}")
             os.mkdir(out / name)
         for name in sorted(filenames):
-            p = base / name
-            st = os.lstat(p)
-            if not stat.S_ISREG(st.st_mode):
-                raise UnsafePathError(f"refusing non-regular file: {p}")
-            write_file(out / name, p.read_bytes(), exclusive=True, mode=st.st_mode & 0o777)
+            path = base / name
+            mode = os.lstat(path).st_mode
+            if not stat.S_ISREG(mode):
+                raise UnsafePathError(f"refusing non-regular file: {path}")
+            write_file(out / name, path.read_bytes(), exclusive=True, mode=mode & 0o777)
 
 
 def write_file(path: Path, data: bytes, *, exclusive: bool = True, mode: int = 0o644) -> None:
-    """Write bytes and fsync. ``exclusive`` refuses to replace an existing path."""
+    """Write bytes and fsync; ``exclusive`` refuses to replace an existing path."""
     flags = os.O_WRONLY | os.O_CREAT | (os.O_EXCL if exclusive else os.O_TRUNC)
     flags |= getattr(os, "O_NOFOLLOW", 0)
     fd = os.open(path, flags, mode)
     try:
         view = memoryview(data)
         while view:
-            n = os.write(fd, view)
-            view = view[n:]
+            written = os.write(fd, view)
+            view = view[written:]
         os.fsync(fd)
     finally:
         os.close(fd)
@@ -138,31 +157,24 @@ def fsync_dir(path: Path) -> None:
     except OSError:
         return
     try:
-        os.fsync(fd)
-    except OSError:
-        pass
+        with contextlib.suppress(OSError):
+            os.fsync(fd)
     finally:
         os.close(fd)
 
 
 def ensure_real_dirs(root: Path, rel_parts: tuple[str, ...]) -> Path:
-    """Create ``root/part1/part2...`` refusing any symlink or non-directory on the way.
-
-    ``root`` must already be resolved. Each component is created with
-    ``os.mkdir`` (never makedirs) and checked with ``lstat`` afterwards so a
-    symlink planted between creation steps is detected.
-    """
+    """Create ``root/parts...`` refusing symlinks; ``root`` must already be resolved."""
+    # mkdir then lstat per part (not makedirs) so a symlink planted between steps is caught.
     current = root
     for part in rel_parts:
         current = current / part
-        try:
+        with contextlib.suppress(FileExistsError):
             os.mkdir(current)
-        except FileExistsError:
-            pass
-        st = os.lstat(current)
-        if stat.S_ISLNK(st.st_mode):
+        mode = os.lstat(current).st_mode
+        if stat.S_ISLNK(mode):
             raise UnsafePathError(f"refusing symlinked directory: {current}")
-        if not stat.S_ISDIR(st.st_mode):
+        if not stat.S_ISDIR(mode):
             raise UnsafePathError(f"not a directory: {current}")
     if os.path.realpath(current) != str(current):
         raise UnsafePathError(f"directory resolves outside its expected location: {current}")
@@ -171,30 +183,28 @@ def ensure_real_dirs(root: Path, rel_parts: tuple[str, ...]) -> Path:
 
 def check_no_symlinks(root: Path, rel_parts: tuple[str, ...]) -> list[str]:
     """Read-only variant of ensure_real_dirs: report problems without creating anything."""
-    problems = []
     current = root
     for part in rel_parts:
         current = current / part
         try:
-            st = os.lstat(current)
+            mode = os.lstat(current).st_mode
         except FileNotFoundError:
-            break
-        if stat.S_ISLNK(st.st_mode):
-            problems.append(f"symlinked path: {current}")
-            break
-        if not stat.S_ISDIR(st.st_mode):
-            problems.append(f"not a directory: {current}")
-            break
-    return problems
+            return []
+        if stat.S_ISLNK(mode):
+            return [f"symlinked path: {current}"]
+        if not stat.S_ISDIR(mode):
+            return [f"not a directory: {current}"]
+    return []
 
-
-# --- no-replace rename -----------------------------------------------------
 
 class NoReplaceUnsupported(OSError):
     pass
 
 
 _libc = None
+_RENAME_EXCL = 0x00000004  # macOS renamex_np flag
+_AT_FDCWD = -100
+_RENAME_NOREPLACE = 1  # Linux renameat2 flag
 
 
 def _get_libc():
@@ -206,31 +216,25 @@ def _get_libc():
 
 
 def rename_noreplace(src: Path, dst: Path) -> None:
-    """Atomically rename ``src`` to ``dst`` failing with FileExistsError if ``dst`` exists.
-
-    Uses renamex_np(RENAME_EXCL) on macOS and renameat2(RENAME_NOREPLACE) on
-    Linux. Raises NoReplaceUnsupported where neither is available so callers
-    can fall back to a reservation protocol or fail safely.
-    """
+    """Atomically rename; raises FileExistsError if ``dst`` exists."""
     libc = _get_libc()
-    s, d = os.fsencode(src), os.fsencode(dst)
+    source, destination = os.fsencode(src), os.fsencode(dst)
     if libc is not None and sys.platform == "darwin" and hasattr(libc, "renamex_np"):
-        RENAME_EXCL = 0x00000004
-        if libc.renamex_np(s, d, RENAME_EXCL) == 0:
+        if libc.renamex_np(source, destination, _RENAME_EXCL) == 0:
             return
         _raise_rename_error(ctypes.get_errno(), src, dst)
     if libc is not None and sys.platform.startswith("linux") and hasattr(libc, "renameat2"):
-        AT_FDCWD, RENAME_NOREPLACE = -100, 1
-        if libc.renameat2(AT_FDCWD, s, AT_FDCWD, d, RENAME_NOREPLACE) == 0:
+        if libc.renameat2(_AT_FDCWD, source, _AT_FDCWD, destination, _RENAME_NOREPLACE) == 0:
             return
         _raise_rename_error(ctypes.get_errno(), src, dst)
     raise NoReplaceUnsupported(errno.ENOSYS, "no-replace rename is not available on this platform")
 
 
 def _raise_rename_error(err: int, src: Path, dst: Path) -> None:
+    unsupported = (errno.ENOSYS, errno.EINVAL, errno.ENOTSUP, getattr(errno, "EOPNOTSUPP", 0))
     if err in (errno.EEXIST, errno.ENOTEMPTY):
         raise FileExistsError(err, os.strerror(err), str(dst))
-    if err in (errno.ENOSYS, errno.EINVAL, errno.ENOTSUP, getattr(errno, "EOPNOTSUPP", errno.ENOTSUP)):
+    if err in unsupported:
         raise NoReplaceUnsupported(err, os.strerror(err), str(dst))
     raise OSError(err, os.strerror(err), str(src))
 
@@ -242,8 +246,6 @@ def pid_alive(pid: int) -> bool:
         os.kill(pid, 0)
     except ProcessLookupError:
         return False
-    except PermissionError:
-        return True
     except OSError:
         return True
     return True

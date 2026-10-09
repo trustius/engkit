@@ -13,7 +13,7 @@ description: Produce an evidence-based implementation plan with scope, affected 
 Out of scope:
 - Small, obvious changes where a plan adds no value: say so and stop.
 - Finding the cause of a failure (use `systematic-debugging` first).
-- Reviewing an existing diff (use `code-review`).
+- Reviewing an existing diff (use `change-review`).
 - Choosing a technology stack for a new project (use `stack-selection`).
 - Writing the code: this skill plans only.
 

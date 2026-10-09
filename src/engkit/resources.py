@@ -1,9 +1,6 @@
-"""Locate bundled toolkit resources independent of the caller's cwd.
+"""Locate bundled resources: ``engkit/_resources/`` when installed, else the checkout root.
 
-An installed distribution carries ``engkit/_resources/`` (copied by the build
-hook in setup.py). A source checkout (editable install or ``PYTHONPATH=src``)
-falls back to the repository root, located relative to this file. The current
-working directory is never consulted.
+The current working directory is never consulted.
 """
 
 from __future__ import annotations
@@ -18,7 +15,7 @@ class ResourceError(RuntimeError):
 
 
 def _is_resource_root(path: Path) -> bool:
-    return all((path / name).is_dir() for name in RESOURCE_DIRS)
+    return all((path / directory).is_dir() for directory in RESOURCE_DIRS)
 
 
 def resource_root() -> Path:
@@ -30,7 +27,8 @@ def resource_root() -> Path:
     if _is_resource_root(checkout) and (checkout / "pyproject.toml").is_file():
         return checkout
     raise ResourceError(
-        f"engkit resources not found: expected {bundled} (installed) or a source checkout at {checkout}"
+        f"engkit resources not found: expected {bundled} (installed) "
+        f"or a source checkout at {checkout}"
     )
 
 

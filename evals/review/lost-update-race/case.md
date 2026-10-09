@@ -1,6 +1,6 @@
 # review/lost-update-race
 
-Skill: code-review
+Skill: change-review
 
 ## Prompt
 

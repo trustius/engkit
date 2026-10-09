@@ -1,12 +1,14 @@
 import os
 
-from engkit.catalog import discover, split_frontmatter, FrontmatterError
+from engkit.catalog import FrontmatterError, discover, split_frontmatter
 from tests.helpers import TempDirTest, skill_text
 
 
 class CatalogTest(TempDirTest):
     def test_deterministic_order_and_descriptions(self):
-        root = self.make_toolkit({n: skill_text(n, f"Desc {n}.") for n in ("zeta", "alpha", "mid-one")})
+        root = self.make_toolkit(
+            {n: skill_text(n, f"Desc {n}.") for n in ("zeta", "alpha", "mid-one")}
+        )
         first = discover(root)
         second = discover(root)
         self.assertEqual([s.name for s in first.skills], ["alpha", "mid-one", "zeta"])

@@ -1,5 +1,5 @@
 ---
-name: code-review
+name: change-review
 description: Review a code change for correctness, security, data integrity, concurrency, performance, compatibility and test quality, reporting only evidence-backed findings with priority and suggested corrections; use when given a diff, pull request, patch or an explicit request to review a code change.
 ---
 

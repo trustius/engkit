@@ -1,6 +1,6 @@
 # review/n-plus-one-misleading-tests
 
-Skill: code-review
+Skill: change-review
 
 ## Prompt
 

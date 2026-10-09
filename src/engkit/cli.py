@@ -78,12 +78,14 @@ def cmd_install(args) -> int:
     from engkit.installer import install
 
     scope = "user" if args.global_ else "project"
-    results = install(_resources(), args.name, args.target, scope=scope, project_dir=args.project_dir)
+    results = install(
+        _resources(), args.name, args.target, scope=scope, project_dir=args.project_dir
+    )
     for result in results:
         stream = sys.stdout if result.exit_code == EXIT_OK else sys.stderr
         print(result.format(), file=stream)
     if len(results) > 1:
-        print("note: each target is installed independently; there is no cross-platform transaction")
+        print("note: each target is installed independently (no cross-platform transaction)")
     return max((result.exit_code for result in results), default=EXIT_OK)
 
 
@@ -109,6 +111,39 @@ def cmd_doctor(args) -> int:
     return EXIT_FAILURE if report["errors"] else EXIT_OK
 
 
+def cmd_memory_init(args) -> int:
+    from engkit import fsutil, memory
+
+    root = _project_root(args.project_dir)
+    try:
+        result = memory.init(root)
+    except fsutil.UnsafePathError as exc:
+        raise EngkitError(f"refusing to create memory: {exc}", EXIT_FAILURE) from None
+    for path in result.created:
+        print(f"created {path}")
+    for path in result.existing:
+        print(f"kept existing {path}")
+    print("engkit does not edit CLAUDE.md or AGENTS.md. To load memory, add yourself:")
+    print(f"  CLAUDE.md: {memory.CLAUDE_SNIPPET.strip()}")
+    print(f"  AGENTS.md: {memory.AGENTS_SNIPPET.strip()}")
+    return EXIT_OK
+
+
+def cmd_memory_validate(args) -> int:
+    from engkit import memory
+
+    issues = memory.validate(_project_root(args.project_dir))
+    for issue in issues:
+        stream = sys.stderr if issue.level == "error" else sys.stdout
+        print(issue.format(), file=stream)
+    error_count = sum(1 for issue in issues if issue.level == "error")
+    if error_count:
+        print(f"memory validation failed: {error_count} error(s)", file=sys.stderr)
+        return EXIT_FAILURE
+    print("ok: memory is valid")
+    return EXIT_OK
+
+
 class _Parser(argparse.ArgumentParser):
     def error(self, message):
         self.print_usage(sys.stderr)
@@ -122,7 +157,7 @@ def _add_list(subparsers) -> None:
 
 
 def _add_validate(subparsers) -> None:
-    parser = subparsers.add_parser("validate", help="validate one or all canonical skills (read-only)")
+    parser = subparsers.add_parser("validate", help="validate one or all canonical skills")
     parser.add_argument("name", nargs="?", help="skill name (default: all)")
     parser.set_defaults(func=cmd_validate)
 
@@ -158,6 +193,20 @@ def _add_doctor(subparsers) -> None:
     parser.set_defaults(func=cmd_doctor)
 
 
+def _add_memory(subparsers) -> None:
+    memory_parser = subparsers.add_parser("memory", help="project memory in .engkit/memory/")
+    commands = memory_parser.add_subparsers(
+        dest="memory_command", metavar="<subcommand>", parser_class=_Parser
+    )
+    commands.required = True
+    init_parser = commands.add_parser("init", help="create .engkit/memory/ (never overwrites)")
+    init_parser.add_argument("--project-dir", help="project root (default: current directory)")
+    init_parser.set_defaults(func=cmd_memory_init)
+    validate_parser = commands.add_parser("validate", help="check memory format (read-only)")
+    validate_parser.add_argument("--project-dir", help="project root (default: current directory)")
+    validate_parser.set_defaults(func=cmd_memory_validate)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = _Parser(
         prog="engkit",
@@ -172,6 +221,7 @@ def build_parser() -> argparse.ArgumentParser:
     _add_validate(subparsers)
     _add_install(subparsers)
     _add_doctor(subparsers)
+    _add_memory(subparsers)
     return parser
 
 

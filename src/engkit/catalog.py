@@ -8,7 +8,8 @@ from pathlib import Path
 
 import yaml
 
-NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+# \Z, not $: "$" would accept a trailing newline.
+NAME_RE = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*\Z")
 NAME_MAX = 64
 DESCRIPTION_MAX = 1024
 
@@ -47,16 +48,16 @@ class FrontmatterError(ValueError):
 
 
 def split_frontmatter(text: str) -> tuple[dict, str]:
-    """Return (metadata, body). Frontmatter must be the first block delimited by '---' lines."""
+    """Return (metadata, body); frontmatter is the first block delimited by '---' lines."""
     if text.startswith("﻿"):
         text = text[1:]
     lines = text.splitlines(keepends=True)
     if not lines or lines[0].rstrip("\r\n") != "---":
         raise FrontmatterError("missing YAML frontmatter (file must start with '---')")
-    for idx in range(1, len(lines)):
-        if lines[idx].rstrip("\r\n") == "---":
-            raw = "".join(lines[1:idx])
-            body = "".join(lines[idx + 1 :])
+    for index in range(1, len(lines)):
+        if lines[index].rstrip("\r\n") == "---":
+            raw = "".join(lines[1:index])
+            body = "".join(lines[index + 1 :])
             break
     else:
         raise FrontmatterError("unterminated YAML frontmatter (no closing '---')")
@@ -65,7 +66,8 @@ def split_frontmatter(text: str) -> tuple[dict, str]:
     except yaml.YAMLError as exc:
         mark = getattr(exc, "problem_mark", None)
         where = f" at frontmatter line {mark.line + 1}" if mark else ""
-        raise FrontmatterError(f"malformed YAML{where}: {getattr(exc, 'problem', exc)}") from None
+        problem = getattr(exc, "problem", exc)
+        raise FrontmatterError(f"malformed YAML{where}: {problem}") from None
     if not isinstance(data, dict):
         raise FrontmatterError("frontmatter must be a YAML mapping")
     return data, body
@@ -75,19 +77,59 @@ def skills_dir(root: Path) -> Path:
     return root / "skills"
 
 
-def discover(root: Path) -> CatalogResult:
-    """Deterministically enumerate ``root/skills/*/SKILL.md``.
+def _load_skill(entry: Path, issues: list[Issue]) -> Skill | None:
+    skill_md = entry / "SKILL.md"
+    if skill_md.is_symlink():
+        issues.append(Issue(skill_md, "SKILL.md must be a regular file, not a symlink"))
+        return None
+    if not skill_md.is_file():
+        issues.append(Issue(skill_md, "missing SKILL.md"))
+        return None
+    try:
+        metadata, body = split_frontmatter(skill_md.read_text(encoding="utf-8"))
+    except UnicodeDecodeError:
+        issues.append(Issue(skill_md, "SKILL.md is not valid UTF-8"))
+        return None
+    except FrontmatterError as exc:
+        issues.append(Issue(skill_md, str(exc)))
+        return None
+    name = metadata.get("name")
+    description = metadata.get("description")
+    return Skill(
+        name=name if isinstance(name, str) else "",
+        path=entry,
+        description=description.strip() if isinstance(description, str) else "",
+        metadata=metadata,
+        body=body,
+    )
 
-    Hidden entries are ignored. Problems are reported as issues; skills with
-    unreadable metadata are excluded from ``skills``. Duplicate frontmatter
-    names are errors and every duplicate is excluded.
-    """
+
+def _reject_duplicates(result: CatalogResult) -> None:
+    groups: dict[str, list[Skill]] = {}
+    for skill in result.skills:
+        if skill.name:
+            groups.setdefault(skill.name, []).append(skill)
+    duplicates = {name for name, group in groups.items() if len(group) > 1}
+    for name in sorted(duplicates):
+        paths = ", ".join(str(skill.path) for skill in groups[name])
+        for skill in groups[name]:
+            message = f"duplicate skill name '{name}' (also in: {paths})"
+            result.issues.append(Issue(skill.path / "SKILL.md", message))
+    result.skills = [skill for skill in result.skills if skill.name not in duplicates]
+
+
+def discover(root: Path) -> CatalogResult:
+    """Deterministically enumerate ``root/skills/*/SKILL.md``; duplicate names are all excluded."""
+    return discover_dir(skills_dir(root))
+
+
+def discover_dir(base: Path) -> CatalogResult:
+    """Enumerate ``base/*/SKILL.md`` for any skills directory, such as one in a git checkout."""
     result = CatalogResult()
-    base = skills_dir(root)
     if not base.is_dir():
         result.issues.append(Issue(base, "skills directory not found"))
         return result
-    for entry in sorted(base.iterdir(), key=lambda p: p.name):
+    for entry in sorted(base.iterdir(), key=lambda path: path.name):
         if entry.name.startswith("."):
             continue
         if entry.is_symlink():
@@ -95,46 +137,16 @@ def discover(root: Path) -> CatalogResult:
             continue
         if not entry.is_dir():
             continue
-        skill_md = entry / "SKILL.md"
-        if skill_md.is_symlink() or not skill_md.is_file():
-            reason = "SKILL.md must be a regular file, not a symlink" if skill_md.is_symlink() else "missing SKILL.md"
-            result.issues.append(Issue(skill_md, reason))
-            continue
-        try:
-            meta, body = split_frontmatter(skill_md.read_text(encoding="utf-8"))
-        except UnicodeDecodeError:
-            result.issues.append(Issue(skill_md, "SKILL.md is not valid UTF-8"))
-            continue
-        except FrontmatterError as exc:
-            result.issues.append(Issue(skill_md, str(exc)))
-            continue
-        name = meta.get("name")
-        desc = meta.get("description")
-        result.skills.append(
-            Skill(
-                name=name if isinstance(name, str) else "",
-                path=entry,
-                description=desc.strip() if isinstance(desc, str) else "",
-                metadata=meta,
-                body=body,
-            )
-        )
-    seen: dict[str, list[Skill]] = {}
-    for s in result.skills:
-        if s.name:
-            seen.setdefault(s.name, []).append(s)
-    dupes = {n for n, group in seen.items() if len(group) > 1}
-    for n in sorted(dupes):
-        paths = ", ".join(str(s.path) for s in seen[n])
-        for s in seen[n]:
-            result.issues.append(Issue(s.path / "SKILL.md", f"duplicate skill name '{n}' (also in: {paths})"))
-    result.skills = [s for s in result.skills if s.name not in dupes]
+        skill = _load_skill(entry, result.issues)
+        if skill is not None:
+            result.skills.append(skill)
+    _reject_duplicates(result)
     return result
 
 
 def find(root: Path, name: str) -> tuple[Skill | None, CatalogResult]:
     result = discover(root)
-    for s in result.skills:
-        if s.name == name and s.path.name == name:
-            return s, result
+    for skill in result.skills:
+        if skill.name == name and skill.path.name == name:
+            return skill, result
     return None, result

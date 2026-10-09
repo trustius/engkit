@@ -1,22 +1,12 @@
 """Copy-based, staged, no-replace installation of canonical skills.
 
-Contract (docs/adr/0002-installation-safety.md):
-1. Validate the canonical source.
-2. Resolve the root once; create/verify each managed parent below it,
-   refusing symlinks and non-directories.
-3. Copy into an operation-owned staging sibling, verify against the source hash.
-4. Publish with an atomic no-replace rename (renamex_np / renameat2). Where
-   unavailable, use the reservation protocol: ``mkdir(dest)`` (exclusive) then
-   rename staging onto the still-empty reserved directory; a non-empty
-   reservation makes the rename fail rather than replace content.
-5. If the destination already exists, compare it: identical -> already
-   installed, empty reservation -> busy, otherwise -> conflict. Existing
-   destinations are never deleted or modified.
-6. Clean only this operation's staging directory.
+Contract: docs/adr/0002-installation-safety.md. Existing destinations are never
+deleted or modified; only this operation's staging directory is cleaned up.
 """
 
 from __future__ import annotations
 
+import contextlib
 import os
 import shutil
 import uuid
@@ -37,8 +27,7 @@ STATUS_EXIT = {INSTALLED: EXIT_OK, ALREADY: EXIT_OK, CONFLICT: EXIT_CONFLICT, BU
 
 STAGE_MARKER = ".engkit-stage-"
 
-# Test seam: called with a stage name ("staged", "before_publish") and the
-# destination path. Production code leaves it as None.
+# Test seam called with ("staged" | "before_publish", destination path).
 fault_hook = None
 
 
@@ -57,7 +46,9 @@ class InstallResult:
         return f"{line}\n    {self.detail}" if self.detail else line
 
 
-def resolve_root(scope: str, project_dir: str | os.PathLike | None, home_dir: str | os.PathLike | None) -> Path:
+def resolve_root(
+    scope: str, project_dir: str | os.PathLike | None, home_dir: str | os.PathLike | None
+) -> Path:
     if scope == "project":
         raw = Path(project_dir) if project_dir is not None else Path.cwd()
     else:
@@ -66,6 +57,14 @@ def resolve_root(scope: str, project_dir: str | os.PathLike | None, home_dir: st
     if not root.is_dir():
         raise NotADirectoryError(f"not a directory: {root}")
     return root
+
+
+def _failures(
+    targets: list[platforms.Platform], scope: str, name: str, detail: str, exit_code: int
+) -> list[InstallResult]:
+    return [
+        InstallResult(item.id, scope, name, Path("-"), ERROR, detail, exit_code) for item in targets
+    ]
 
 
 def install(
@@ -78,52 +77,65 @@ def install(
     home_dir: str | os.PathLike | None = None,
     allow_native_noreplace: bool = True,
 ) -> list[InstallResult]:
-    """Install one skill to each requested platform. Returns per-target results."""
+    """Install one skill to each requested platform; returns one result per platform."""
     targets = platforms.expand_target(target)
     report = validate(toolkit_root, name)
-    errors = [i for i in report.issues if i.level == "error"]
+    errors = [issue for issue in report.issues if issue.level == "error"]
     if errors or not report.skills:
-        detail = "; ".join(i.format() for i in errors) or "unknown skill"
-        return [
-            InstallResult(p.id, scope, name, Path("-"), ERROR, f"source failed validation: {detail}", EXIT_FAILURE)
-            for p in targets
-        ]
+        detail = "; ".join(issue.format() for issue in errors) or "unknown skill"
+        return _failures(targets, scope, name, f"source failed validation: {detail}", EXIT_FAILURE)
     source = report.skills[0].path
     try:
         source_hash = fsutil.tree_snapshot(source, allow_symlinks=False)
-    except fsutil.UnsafePathError as exc:
-        return [InstallResult(p.id, scope, name, Path("-"), ERROR, str(exc), EXIT_FAILURE) for p in targets]
+    except (fsutil.UnsafePathError, OSError) as exc:
+        return _failures(targets, scope, name, str(exc), EXIT_FAILURE)
     try:
         root = resolve_root(scope, project_dir, home_dir)
     except OSError as exc:
-        return [InstallResult(p.id, scope, name, Path("-"), ERROR, f"cannot resolve root: {exc}", EXIT_IO) for p in targets]
+        return _failures(targets, scope, name, f"cannot resolve root: {exc}", EXIT_IO)
 
     results = []
     for platform in targets:
-        dest = platforms.destination(platform, scope, root)
-        results.append(_install_one(source, source_hash, name, dest, allow_native_noreplace))
+        destination = platforms.destination(platform, scope, root)
+        results.append(_install_one(source, source_hash, name, destination, allow_native_noreplace))
     return results
 
 
-def _install_one(source: Path, source_hash: dict, name: str, dest: platforms.Destination, native: bool) -> InstallResult:
-    target = dest.skill_path(name)
+def _install_one(
+    source: Path,
+    source_hash: dict,
+    name: str,
+    destination: platforms.Destination,
+    native: bool,
+) -> InstallResult:
+    target = destination.skill_path(name)
 
     def result(status: str, detail: str = "", code: int | None = None) -> InstallResult:
-        return InstallResult(dest.platform.id, dest.scope, name, target, status, detail,
-                             STATUS_EXIT.get(status, EXIT_FAILURE) if code is None else code)
+        exit_code = STATUS_EXIT.get(status, EXIT_FAILURE) if code is None else code
+        return InstallResult(
+            destination.platform.id, destination.scope, name, target, status, detail, exit_code
+        )
 
+    # Parents are checked before inspecting the target so a symlinked skills
+    # directory cannot make an existing copy look installed.
+    problems = fsutil.check_no_symlinks(destination.root, destination.parts)
+    if problems:
+        return result(ERROR, f"unsafe destination: {problems[0]}", EXIT_FAILURE)
     # Cheap early answer; publication below re-checks atomically.
     early = _inspect_existing(target, source_hash)
     if early is not None:
         return result(*early)
     try:
-        skills_dir = fsutil.ensure_real_dirs(dest.root, dest.parts)
+        skills_dir = fsutil.ensure_real_dirs(destination.root, destination.parts)
     except fsutil.UnsafePathError as exc:
         return result(ERROR, f"unsafe destination: {exc}", EXIT_FAILURE)
     except OSError as exc:
         return result(ERROR, f"cannot create destination parents: {exc}", EXIT_IO)
+    return _stage_and_publish(source, source_hash, skills_dir, target, native, result)
 
-    staging = skills_dir / f".{name}{STAGE_MARKER}{uuid.uuid4().hex}"
+
+def _stage_and_publish(source, source_hash, skills_dir, target, native, result) -> InstallResult:
+    staging = skills_dir / f".{target.name}{STAGE_MARKER}{uuid.uuid4().hex}"
     try:
         fsutil.copy_tree_regular(source, staging)
         if fault_hook:
@@ -157,7 +169,10 @@ def _publish(staging: Path, target: Path, native: bool) -> bool:
             return False
         except fsutil.NoReplaceUnsupported:
             pass
-    # Reservation protocol: exclusive mkdir, then rename onto the empty reservation.
+    return _publish_with_reservation(staging, target)
+
+
+def _publish_with_reservation(staging: Path, target: Path) -> bool:
     try:
         os.mkdir(target)
     except FileExistsError:
@@ -166,11 +181,9 @@ def _publish(staging: Path, target: Path, native: bool) -> bool:
         os.rename(staging, target)  # replaces only an *empty* directory
         return True
     except OSError:
-        # Someone wrote into our reservation; leave it untouched if not empty.
-        try:
+        # Someone wrote into our reservation; rmdir leaves it untouched if not empty.
+        with contextlib.suppress(OSError):
             os.rmdir(target)
-        except OSError:
-            pass
         return False
 
 
@@ -190,8 +203,14 @@ def _inspect_existing(target: Path, source_hash: dict) -> tuple[str, str] | None
     if existing == source_hash:
         return ALREADY, ""
     if not existing:
-        return BUSY, "destination is an empty reservation (another install in progress or interrupted); retry or remove the empty directory"
-    return CONFLICT, "destination differs from the canonical skill; it was left untouched (replacement is not supported in this release)"
+        return BUSY, (
+            "destination is an empty reservation (another install in progress or "
+            "interrupted); retry or remove the empty directory"
+        )
+    return CONFLICT, (
+        "destination differs from the canonical skill; it was left untouched "
+        "(replacement is not supported in this release)"
+    )
 
 
 def _cleanup(staging: Path) -> None:
@@ -201,15 +220,15 @@ def _cleanup(staging: Path) -> None:
 
 
 def status_of(source: Path, target: Path) -> str:
-    """Read-only comparison used by doctor: missing | identical | differs | unsafe."""
+    """Read-only comparison for doctor: missing | identical | differs | empty | unsafe."""
     if not os.path.lexists(target):
         return "missing"
     if os.path.islink(target) or not os.path.isdir(target):
         return "unsafe"
     try:
-        same = fsutil.tree_snapshot(target) == fsutil.tree_snapshot(source)
+        existing = fsutil.tree_snapshot(target)
+        if existing == fsutil.tree_snapshot(source):
+            return "identical"
+        return "differs" if existing else "empty"
     except (fsutil.UnsafePathError, OSError):
         return "unsafe"
-    if same:
-        return "identical"
-    return "empty" if not any(target.iterdir()) else "differs"

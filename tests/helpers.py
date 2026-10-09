@@ -19,14 +19,14 @@ SKILL_BODY = """
 ## When to use
 Use for synthetic tests. Not for anything else.
 
+## When to ask
+Ask when the input is ambiguous.
+
 ## Objective
 Test.
 
 ## Inputs
 None.
-
-## Project context (optional)
-Read `.engkit/generated/PROJECT_CONTEXT.md` if present.
 
 ## Workflow
 1. Do the thing.
@@ -39,8 +39,14 @@ No edits.
 """
 
 
-def skill_text(name: str, description: str = "A synthetic skill for tests.", extra: str = "") -> str:
-    return f"---\nname: {name}\ndescription: {description}\n---\n" + SKILL_BODY.format(name=name) + extra
+def skill_text(
+    name: str, description: str = "A synthetic skill for tests.", extra: str = ""
+) -> str:
+    return (
+        f"---\nname: {name}\ndescription: {description}\n---\n"
+        + SKILL_BODY.format(name=name)
+        + extra
+    )
 
 
 class TempDirTest(unittest.TestCase):
@@ -51,7 +57,9 @@ class TempDirTest(unittest.TestCase):
         self.tmp = Path(self._tmp.name).resolve()
         self.home = self.tmp / "home"
         self.home.mkdir()
-        patcher = mock.patch.dict(os.environ, {"HOME": str(self.home), "USERPROFILE": str(self.home)})
+        patcher = mock.patch.dict(
+            os.environ, {"HOME": str(self.home), "USERPROFILE": str(self.home)}
+        )
         patcher.start()
         self.addCleanup(patcher.stop)
         self.addCleanup(self._cleanup)
@@ -64,7 +72,9 @@ class TempDirTest(unittest.TestCase):
                     os.chmod(p, 0o755)
         self._tmp.cleanup()
 
-    def make_toolkit(self, skills: dict[str, str] | None = None, copy_real: bool = False, name: str = "toolkit") -> Path:
+    def make_toolkit(
+        self, skills: dict[str, str] | None = None, copy_real: bool = False, name: str = "toolkit"
+    ) -> Path:
         """A toolkit root containing skills/."""
         root = self.tmp / name
         root.mkdir()

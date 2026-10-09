@@ -1,6 +1,6 @@
 import os
 
-from engkit.validator import validate
+from engkit.validator import validate, validate_name
 from tests.helpers import REPO, TempDirTest, skill_text
 
 
@@ -18,12 +18,19 @@ class ValidatorTest(TempDirTest):
         self.assertTrue(any("does not match directory" in e for e in errors(validate(root))))
 
     def test_invalid_names(self):
-        for i, bad in enumerate(("Upper", "under_score", "-lead", "trail-", "double--hyphen", "a" * 65)):
+        for i, bad in enumerate(
+            ("Upper", "under_score", "-lead", "trail-", "double--hyphen", "a" * 65)
+        ):
             with self.subTest(bad=bad):
                 root = self.make_toolkit({bad: skill_text(bad)}, name=f"tk{i}")
                 errs = errors(validate(root))
                 self.assertTrue(errs, bad)
                 self.assertIn(str(root / "skills" / bad), "\n".join(errs))
+
+    def test_trailing_newline_in_name_is_rejected(self):
+        self.assertIsNotNone(validate_name("demo\n"))
+        root = self.make_toolkit({"demo": skill_text("demo")})
+        self.assertTrue(any("invalid skill name" in e for e in errors(validate(root, "demo\n"))))
 
     def test_missing_and_malformed_frontmatter(self):
         root = self.make_toolkit({"nofm": "# no frontmatter\n", "badyaml": "---\nname: [x\n---\n"})
@@ -32,10 +39,12 @@ class ValidatorTest(TempDirTest):
         self.assertIn("malformed YAML", errs)
 
     def test_missing_description_and_too_long(self):
-        root = self.make_toolkit({
-            "nodesc": "---\nname: nodesc\n---\n" + skill_text("x").split("---\n", 2)[2],
-            "longdesc": skill_text("longdesc", "x" * 1025),
-        })
+        root = self.make_toolkit(
+            {
+                "nodesc": "---\nname: nodesc\n---\n" + skill_text("x").split("---\n", 2)[2],
+                "longdesc": skill_text("longdesc", "x" * 1025),
+            }
+        )
         errs = "\n".join(errors(validate(root)))
         self.assertIn("description must be a non-empty string", errs)
         self.assertIn("exceeds 1024", errs)
@@ -82,11 +91,19 @@ class ValidatorTest(TempDirTest):
         root = self.make_toolkit({"warny": text})
         result = validate(root)
         self.assertEqual(errors(result), [])
-        self.assertTrue(any(i.level == "warning" and "non-portable" in i.message for i in result.issues))
+        self.assertTrue(
+            any(i.level == "warning" and "non-portable" in i.message for i in result.issues)
+        )
 
 
 class CanonicalSkillsTest(TempDirTest):
-    EXPECTED = {"systematic-debugging", "code-review", "implementation-planning", "project-discovery", "stack-selection"}
+    EXPECTED = {
+        "systematic-debugging",
+        "change-review",
+        "implementation-planning",
+        "project-discovery",
+        "stack-selection",
+    }
 
     def test_repository_skills_are_valid(self):
         result = validate(REPO)
@@ -97,6 +114,12 @@ class CanonicalSkillsTest(TempDirTest):
         for name in sorted(self.EXPECTED):
             text = (REPO / "skills" / name / "SKILL.md").read_text()
             with self.subTest(skill=name):
-                for phrase in (".engkit/generated/PROJECT_CONTEXT.md", "engkit doctor", "generation-transaction.json",
-                               "verified fact", "plausible hypothesis", "untested assumption"):
+                for phrase in (
+                    ".engkit/generated/PROJECT_CONTEXT.md",
+                    "engkit doctor",
+                    "generation-transaction.json",
+                    "verified fact",
+                    "plausible hypothesis",
+                    "untested assumption",
+                ):
                     self.assertIn(phrase, text)
