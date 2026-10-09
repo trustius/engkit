@@ -11,6 +11,7 @@ SKILL_DIRS = {
     "selection": "stack-select",
     "memory": "memory-save",
     "implement": "implement-plan",
+    "design": "design-ui",
 }
 SECTIONS = (
     "## Prompt",
@@ -49,6 +50,15 @@ class EvalStructureTest(unittest.TestCase):
             prompt = text.split("## Prompt", 1)[1].split("\n## ", 1)[0]
             with self.subTest(case=case.name):
                 self.assertIn("/implement-plan", prompt)
+
+    def test_design_area_has_five_cases_naming_the_command(self):
+        cases = [c for c in self.cases() if c.parent.name == "design"]
+        self.assertGreaterEqual(len(cases), 5)
+        for case in cases:
+            text = (case / "case.md").read_text()
+            prompt = text.split("## Prompt", 1)[1].split("\n## ", 1)[0]
+            with self.subTest(case=case.name):
+                self.assertIn("/design-ui", prompt)
 
     def test_case_sections(self):
         for case in self.cases():

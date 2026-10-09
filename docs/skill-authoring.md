@@ -54,6 +54,9 @@ validator keeps the copies identical. A skill may add more specific guardrails
   `implement-plan` edits files only after the user's session approval of the slice
   and its commands. No skill authorizes production access or destructive actions.
   A documented command is neither permission to run it nor evidence that it passes.
+- **Design-spec file.** `design-ui` writes one file, a UI spec at
+  `docs/plans/YYYY-MM-DD-<slug>-ui-spec.md` (collision suffix, never overwritten), and
+  edits nothing else. `plan-implement` reads a spec and never edits it.
 - **Plan-file progress exception.** `implement-plan` may update only the
   `## Progress` section of the plan it is implementing, and only after the
   approval above. This is not plan writing: the Plans rule still forbids

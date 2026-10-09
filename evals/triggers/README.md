@@ -35,3 +35,4 @@ Allowed values: `pass`, `fail`, `not-run`. No agent runs have been performed yet
 | stack-select | not-run | not-run | not-run |
 | memory-save | not-run | not-run | not-run |
 | implement-plan | not-run | not-run | not-run |
+| design-ui | not-run | not-run | not-run |

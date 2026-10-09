@@ -1,6 +1,6 @@
 # engkit evaluations
 
-Synthetic, agent-level evaluation cases for the seven engkit skills. They check whether
+Synthetic, agent-level evaluation cases for the eight engkit skills. They check whether
 installing a skill improves an agent's work on realistic tasks compared to the same agent
 without the skill. They are **not** automated unit tests. A person (or a separate, blind
 grader) runs each case in Claude Code or Codex and records the result.
@@ -19,7 +19,8 @@ evals/
 
 Skill directories: `debugging/` (bug-investigate), `review/` (change-review),
 `planning/` (plan-implement), `discovery/` (engineering-onboard),
-`selection/` (stack-select), `memory/` (memory-save), `implement/` (implement-plan).
+`selection/` (stack-select), `memory/` (memory-save), `implement/` (implement-plan),
+`design/` (design-ui).
 
 The `rules/` area holds cross-skill guardrail cases. Each case names the command it uses
 (for example `/plan-implement`) in its Prompt; the four shared guardrails are plan file naming,
@@ -31,6 +32,12 @@ before approval, stop after slice 1, a failing check stops, a command outside th
 list asks, a plan/code mismatch stops, a server command becomes a manual step, and resume
 from `## Progress` in a new session. As the skill edits files, graders check the project
 files and the plan after the session, not only the final answer.
+
+The `design/` area holds scenario cases for `design-ui` (`/design-ui`). Each fixture is a tiny
+synthetic project. The cases cover: reuse of existing components and tokens in a web form, CLI
+output without web concepts, a project with no design system, personal-data placeholders, and
+an ambiguous request that must be answered with questions first. The only file the skill may
+write is the spec in `docs/plans/`, so graders check the fixture for other changes.
 
 ## Fixture rules
 
@@ -144,5 +151,10 @@ No agent runs have been performed yet.
 | implement/plan-code-mismatch-stops | implement-plan | not-run | not-run | not-run | not-run |
 | implement/server-command-manual-step | implement-plan | not-run | not-run | not-run | not-run |
 | implement/resume-from-progress | implement-plan | not-run | not-run | not-run | not-run |
+| design/web-form-reuses-components | design-ui | not-run | not-run | not-run | not-run |
+| design/cli-command-output | design-ui | not-run | not-run | not-run | not-run |
+| design/no-design-system | design-ui | not-run | not-run | not-run | not-run |
+| design/personal-data-placeholders | design-ui | not-run | not-run | not-run | not-run |
+| design/ambiguous-request-asks-first | design-ui | not-run | not-run | not-run | not-run |
 
 Trigger evals are in `triggers/README.md`. Update this table only from completed result files.

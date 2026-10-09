@@ -116,9 +116,9 @@ claude --version     # record the version
 claude               # then the steps below
 ```
 
-1. Type `/`. Expected: `/engineering-onboard`, `/plan-implement`, `/implement-plan`,
-   `/change-review`, `/bug-investigate`, `/stack-select` and `/memory-save` are
-   listed. No old name appears.
+1. Type `/`. Expected: `/engineering-onboard`, `/design-ui`, `/plan-implement`,
+   `/implement-plan`, `/change-review`, `/bug-investigate`, `/stack-select` and
+   `/memory-save` are listed. No old name appears.
 2. Run `/engineering-onboard`. Expected: it maps the fixture and writes only
    under `.engkit/memory/`. Run `git status` before and after. Expected: no
    other file changed, and `CLAUDE.md` and `AGENTS.md` are not edited.
@@ -143,8 +143,8 @@ codex --version      # record the version
 codex                # then the steps below
 ```
 
-1. Type `/skills` or `$`. Expected: the same seven commands are listed, including
-   `$implement-plan`.
+1. Type `/skills` or `$`. Expected: the same eight commands are listed, including
+   `$design-ui` and `$implement-plan`.
 2. Run `$engineering-onboard`, then `$change-review` after a synthetic edit, as
    in section 6. Expected results are the same.
 3. Optional: run `$change-review synthetic-argument` and record whether the
@@ -223,7 +223,71 @@ codex                # then the steps below
 
 Record the Codex CLI version, the model, and the result of each step.
 
-## 10. Cleanup
+## 10. Design → plan (Claude Code)
+
+A synthetic UI project in a throwaway directory. `/design-ui` may write only its
+spec file. Use placeholders only; no real names or addresses.
+
+```bash
+rm -rf /tmp/engkit-smoke/design-claude && mkdir -p /tmp/engkit-smoke/design-claude/src/pages
+cd /tmp/engkit-smoke/design-claude && git init -q
+printf '<h1>Team</h1>\n<ul><li>user@example.test</li></ul>\n' > src/pages/team.html
+printf '<button class="btn">Save</button>\n' > src/pages/settings.html
+git add -A && git -c user.email=smoke@example.test -c user.name=smoke commit -qm "baseline"
+$ENGKIT init --project-dir . --target claude
+claude --version     # record the version
+claude               # then the steps below
+```
+
+1. Run `git status --short` (expected: empty). Run
+   `/design-ui let admins invite teammates by email`. Expected: the reply reports the
+   spec path `docs/plans/YYYY-MM-DD-<slug>-ui-spec.md` (a collision gets a suffix).
+   Run `git status --short` again: the only change is the untracked `docs/plans/`
+   directory holding that spec. No code, style or config file changed. The output
+   contract reports `Commands run: none`. Record the spec path.
+2. Open the spec. Expected: existing patterns are cited with paths; each component
+   is marked `reused (path)` or `new`; each data item is marked `observed (path)` or
+   `assumed`; the screens cover loading, empty, error, partial, success and
+   permission denied (or say why one does not apply); acceptance criteria are present;
+   each claim is labelled verified fact, hypothesis or untested assumption; no real
+   personal data appears.
+3. Save a checksum of the spec outside the project (`shasum docs/plans/*-ui-spec.md >
+   /tmp/engkit-smoke/spec.sum`). Run `/plan-implement docs/plans/<spec file>`.
+   Expected: a plan is written to `docs/plans/YYYY-MM-DD-<slug>.md`, and the spec is
+   not edited. Check with `shasum -c /tmp/engkit-smoke/spec.sum`. Stop here: do not
+   run `/implement-plan` in this check.
+
+Record the Claude Code version, the model, and the result of each step in the
+results table.
+
+## 11. Design → plan (Codex)
+
+Same synthetic project in a separate copy, with `$` commands.
+
+```bash
+rm -rf /tmp/engkit-smoke/design-codex && mkdir -p /tmp/engkit-smoke/design-codex/src/pages
+cd /tmp/engkit-smoke/design-codex && git init -q
+printf '<h1>Team</h1>\n<ul><li>user@example.test</li></ul>\n' > src/pages/team.html
+printf '<button class="btn">Save</button>\n' > src/pages/settings.html
+git add -A && git -c user.email=smoke@example.test -c user.name=smoke commit -qm "baseline"
+$ENGKIT init --project-dir . --target codex     # installs to .agents/skills/
+codex --version      # record the version
+codex                # then the steps below
+```
+
+1. Run `$design-ui let admins invite teammates by email`. Expected: the same
+   spec-only write as section 10, step 1. The request text is an argument, and
+   Codex's argument passing is pending (`compatibility.md`). If the text does not
+   reach the command, expected: a question about what to design, for whom and on
+   which surface. Record which behavior occurred.
+2. Check the spec as in section 10, step 2.
+3. Save a checksum as in section 10, step 3, using `/tmp/engkit-smoke/spec-codex.sum`.
+   Run `$plan-implement docs/plans/<spec file>`, then `shasum -c /tmp/engkit-smoke/spec-codex.sum`.
+   Expected: the same plan and an unchanged spec.
+
+Record the Codex CLI version, the model, and the result of each step.
+
+## 12. Cleanup
 
 Delete `/tmp/engkit-smoke/*`. Confirm that `~/.claude/skills`, `~/.agents/skills`,
 `~/.codex/skills` (legacy) and `~/.engkit` are unchanged compared with before
@@ -244,4 +308,6 @@ Every outcome is `pending`. No check has been run in a live session yet.
 | 2026-10-09 | 7 (slash, Codex) | Codex CLI 0.144.1 (record actual) | macOS | pending | Not run: `/skills`, `$engineering-onboard`, `$change-review`, argument test. Record model |
 | 2026-10-09 | 8 (plan → implement → review, Claude Code) | Claude Code 2.1.295 (record actual) | macOS | pending | Not run: needs an interactive session and model access. Record model |
 | 2026-10-09 | 9 (plan → implement → review, Codex) | Codex CLI 0.144.1 (record actual) | macOS | pending | Not run: needs an interactive session. Record whether the plan path reaches `$implement-plan` |
-| 2026-10-09 | 10 | engkit CLI only | macOS | pending | Not run |
+| 2026-10-09 | 10 (design → plan, Claude Code) | Claude Code 2.1.295 (record actual) | macOS | pending | Not run: needs an interactive session and model access. Record model |
+| 2026-10-09 | 11 (design → plan, Codex) | Codex CLI 0.144.1 (record actual) | macOS | pending | Not run: needs an interactive session. Record whether the request text reaches `$design-ui` |
+| 2026-10-09 | 12 | engkit CLI only | macOS | pending | Not run |

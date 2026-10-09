@@ -50,6 +50,7 @@ dependency (installed automatically). `git` on `PATH` is needed only for
 | Command | Purpose | Without arguments |
 |---|---|---|
 | `/engineering-onboard` | Map an existing project and record context in `.engkit/memory` | Maps the whole project. An argument limits it to a path or component |
+| `/design-ui` | Turn a UI request into a reviewable design spec before any code is written | Asks what to design, for whom and on which surface |
 | `/plan-implement` | Plan a change before coding | Asks what to plan |
 | `/implement-plan` | Build one slice of a plan in `docs/plans/`, verify it and record progress | Lists incomplete plans, newest first, and asks which one |
 | `/change-review` | Review a change | Reviews uncommitted changes against HEAD. If the tree is clean, asks for a range or PR |
@@ -66,9 +67,23 @@ Every command separates **verified fact**, **plausible hypothesis** and
 `/implement-plan`, which edits only after you approve the slice and its
 commands. None authorizes production access or destructive actions.
 
-### Plan → implement → review
+### Design → plan → implement → review
 
-A change that needs more than one step runs in three commands:
+A UI change that needs more than one step runs in four commands:
+
+```text
+/design-ui let admins invite teammates by email          # writes docs/plans/YYYY-MM-DD-<slug>-ui-spec.md
+/plan-implement docs/plans/YYYY-MM-DD-<slug>-ui-spec.md  # turns the spec into slices; never edits the spec
+/implement-plan docs/plans/YYYY-MM-DD-<slug>.md          # builds slice 1 after your approval
+/change-review                                           # reviews the uncommitted changes
+```
+
+`/design-ui` writes only the spec file. It surveys the existing UI read-only,
+then writes flows, text wireframes (each component marked `reused (path)` or
+`new`), states and copy, with an accessibility checklist. It never edits code,
+runs dev servers or builds, and asks before opening a link or adding a UI library.
+
+A change that needs more than one step and has no UI runs in three commands:
 
 ```text
 /plan-implement add rate limiting to the export API     # writes docs/plans/YYYY-MM-DD-<slug>.md
@@ -90,8 +105,9 @@ you do that after review. In Codex, type `$implement-plan` instead.
 - **Plans:** a plan of two or more steps is written to
   `docs/plans/YYYY-MM-DD-<slug>.md` in your project (`/plan-implement` always,
   `/stack-select` once you choose an option, `/bug-investigate` when the fix needs
-  more than one change). An existing file is never overwritten: the name gets
-  `-2`, `-3`. Whether you commit `docs/plans/` is your choice; engkit never edits
+  more than one change). `/design-ui` writes its UI spec to
+  `docs/plans/YYYY-MM-DD-<slug>-ui-spec.md` and nothing else. An existing file is
+  never overwritten: the name gets `-2`, `-3`. Whether you commit `docs/plans/` is your choice; engkit never edits
   your `.gitignore` or runs `git add`.
 - **No auto-run on servers:** nothing runs automatically on prod, staging, dev or
   test environments. You get the exact steps instead; a read-only command (status,

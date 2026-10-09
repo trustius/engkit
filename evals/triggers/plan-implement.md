@@ -23,3 +23,4 @@ Synthetic prompts. Run them as described in README.md.
 - 1. With argument: `/plan-implement add CSV export to the reports page` -> Produces a plan only, nothing implemented, ending with Next step `/implement-plan <plan file>`.
 - 2. Without argument: `/plan-implement` -> Asks what change to plan before doing anything else.
 - 3. Plan file: every `/plan-implement` run writes its plan to `docs/plans/YYYY-MM-DD-<slug>.md` and reports the path.
+- 4. UI spec argument: `/plan-implement docs/plans/2026-10-09-teammate-invite-ui-spec.md` -> Reads the spec, splits its flows and screens into slices, carries over its acceptance criteria, does not edit the spec, and writes a new plan file.

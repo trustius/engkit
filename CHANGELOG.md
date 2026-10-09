@@ -11,10 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Seven slash commands, each a skill that runs as `/<name>` in Claude Code and
+- Eight slash commands, each a skill that runs as `/<name>` in Claude Code and
   `$<name>` in Codex:
   - `/engineering-onboard`: map an existing project and record context in `.engkit/memory`.
-  - `/plan-implement`: plan a change before coding.
+  - `/design-ui`: turn a UI request into a reviewable design spec before any code is written
+    (flows, text wireframes marking reused or new components, states, copy, accessibility).
+    It writes only the spec file `docs/plans/YYYY-MM-DD-<slug>-ui-spec.md`, never overwritten.
+  - `/plan-implement`: plan a change before coding. It also accepts a UI spec file from `/design-ui`.
   - `/change-review`: review a change (uncommitted changes against HEAD by default).
   - `/bug-investigate`: find the root cause of a bug.
   - `/stack-select`: compare stacks for a new project or component.

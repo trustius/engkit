@@ -30,6 +30,10 @@ verifiable slices, with testable acceptance criteria, risks and open questions.
   argument, ask for it first.
 - The codebase: architecture, conventions, related modules, existing tests.
 - Specifications, tickets or prior decisions the user provides.
+- A UI spec file from `/design-ui` (match `docs/plans/*-ui-spec*.md`): read it fully, split its flows
+  and screens into slices, and carry its acceptance criteria into the plan. Never edit the spec;
+  cite its path in the plan. A UI slice's verification may be a named manual check. If the spec
+  lists open questions, ask or record them as assumptions.
 - Project memory (optional): if `.engkit/memory/INDEX.md` exists in the target project, read
   it and open only entries relevant to the paths involved. Verify each against current code
   before relying on it, and report which entries were used. If absent, proceed normally.

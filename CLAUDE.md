@@ -65,9 +65,9 @@ an MCP integration or an LLM client.
 Concerns that stay separate:
 
 1. **Skills** (`src/engkit/skills/<name>/SKILL.md`): stack-neutral workflows, exposed
-   as slash commands. Built-in commands: `/engineering-onboard`, `/plan-implement`,
-   `/implement-plan`, `/change-review`, `/bug-investigate`, `/stack-select`,
-   `/memory-save` (`$name` in Codex). Seven in total. Old names (`project-discovery`, `implementation-planning`,
+   as slash commands. Built-in commands: `/engineering-onboard`, `/design-ui`,
+   `/plan-implement`, `/implement-plan`, `/change-review`, `/bug-investigate`,
+   `/stack-select`, `/memory-save` (`$name` in Codex). Eight in total. Old names (`project-discovery`, `implementation-planning`,
    `systematic-debugging`, `stack-selection`, `project-memory`) were dropped
    without aliases; 0.1.0 is unreleased.
 2. **Platform adapters** (`platforms.py`): the only place that maps
@@ -110,7 +110,8 @@ These apply to every agent developing engkit (the shipped skills carry the same
 four rules as `SHARED_GUARDRAILS`, see `docs/skill-authoring.md`):
 
 - **Plans:** write any plan of two or more steps to `docs/plans/YYYY-MM-DD-<slug>.md`.
-  If the name exists, add `-2`, `-3`; never overwrite a plan. Plans are local: never
+  `/design-ui` writes its UI spec to `docs/plans/YYYY-MM-DD-<slug>-ui-spec.md`, the only
+  file it writes. If the name exists, add `-2`, `-3`; never overwrite a plan or spec. Plans are local: never
   `git add` them and never link to them from tracked files.
 - **No remote actions:** never run anything against GitHub, PyPI or other remote services,
   and never act on a server environment (prod, staging, dev, test). This extends the rule

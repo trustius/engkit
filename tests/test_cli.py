@@ -32,7 +32,7 @@ class CliTest(TempDirTest):
         self.assertEqual(code, EXIT_OK)
         self.assertIn("bug-investigate", out)
         code, out, _ = run_cli(["list", "--json"])
-        self.assertEqual(len(json.loads(out)["skills"]), 7)
+        self.assertEqual(len(json.loads(out)["skills"]), 8)
         self.assertEqual(run_cli(["validate"])[0], EXIT_OK)
         self.assertEqual(run_cli(["validate", "change-review"])[0], EXIT_OK)
 
