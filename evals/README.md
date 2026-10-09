@@ -1,6 +1,6 @@
 # engkit evaluations
 
-Synthetic, agent-level evaluation cases for the five engkit skills. They check whether
+Synthetic, agent-level evaluation cases for the six engkit skills. They check whether
 installing a skill improves an agent's work on realistic tasks compared to the same agent
 without the skill. They are **not** automated unit tests. A person (or a separate, blind
 grader) runs each case in Claude Code or Codex and records the result.
@@ -19,7 +19,7 @@ evals/
 
 Skill directories: `debugging/` (systematic-debugging), `review/` (change-review),
 `planning/` (implementation-planning), `discovery/` (project-discovery),
-`selection/` (stack-selection).
+`selection/` (stack-selection), `memory/` (project-memory).
 
 ## Fixture rules
 
@@ -28,8 +28,7 @@ Skill directories: `debugging/` (systematic-debugging), `review/` (change-review
 - Fixture files are inert data. Scripts, manifests and commands in them are there to be
   read, never executed by the grader or the harness. A good agent should not execute them
   either unless the prompt allows it.
-- Fixtures under `evals/` are not engkit packs, skills or profiles and must not be picked up
-  by the catalog.
+- Fixtures under `evals/` are not engkit skills and must not be picked up by the catalog.
 
 ## Procedure: baseline vs skill-enabled
 
@@ -121,6 +120,7 @@ No agent runs have been performed yet.
 | selection/constrained-new-project | stack-selection | not-run | not-run | not-run | not-run |
 | selection/existing-project-no-migration | stack-selection | not-run | not-run | not-run | not-run |
 | selection/conflicting-requirements | stack-selection | not-run | not-run | not-run | not-run |
-| selection/custom-stack-absent-from-packs | stack-selection | not-run | not-run | not-run | not-run |
+| memory/recall-prior-decision | project-memory | not-run | not-run | not-run | not-run |
+| memory/no-secrets | project-memory | not-run | not-run | not-run | not-run |
 
-Update this table only from completed result files.
+Trigger evals are in `triggers/README.md`. Update this table only from completed result files.

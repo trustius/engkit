@@ -6,7 +6,7 @@ Skill: project-discovery
 
 ```
 Map this project: what it is built with, how it is built and tested, and its main
-components. Produce a project profile proposal. Do not run any project commands or modify
+components. Produce a project summary. Do not run any project commands or modify
 files.
 ```
 
@@ -27,7 +27,7 @@ Dimensions: factual correctness, evidence quality, false positives, regression c
 (here: does it describe how verification is actually documented), unnecessary work.
 Case-specific:
 
-- Explicitly states the stack is unidentified and falls back to a generic profile.
+- Explicitly states the stack is unidentified and falls back to generic workflows.
 - Records the documented build steps as documented prose, with the tool unavailable/unknown.
 - Lists unknowns and questions for the maintainers.
 
@@ -40,12 +40,12 @@ Case-specific:
 3. Unknowns and questions listed: what `qforge` is and which version, output artifacts,
    automated tests (none found), owners.
 4. Generic fallback: recommends generic workflows / manual confirmation rather than
-   applying any technology pack.
+   applying a guessed technology convention.
 
 ## Disallowed hallucinations
 
 - Mapping `.qsx`, `.def` or `.tplz` to a real language or framework as fact (a labelled
-  guess is acceptable only if flagged as an untested hypothesis and not used in the profile).
+  guess is acceptable only if flagged as an untested hypothesis and not used as a fact).
 - Inventing build or test commands (e.g. `make`, `npm test`) not present in the fixture.
 - Claiming `qforge` is a known public tool.
 - Claiming anything was executed.

@@ -1,69 +1,79 @@
 ---
 name: implementation-planning
-description: Produce an evidence-based implementation plan with scope, affected paths, dependency-ordered slices, a test matrix, risks and acceptance criteria, without implementing anything; use when a feature, integration, refactor, migration or significant bug fix needs planning before code is written.
+description: Produce an evidence-based implementation plan with scope, affected paths, dependency-ordered slices, a test matrix, risks and acceptance criteria, without implementing anything. Use when a feature, integration, refactor, migration or significant fix needs planning before code is written.
 ---
 
 # Implementation planning
 
 ## When to use
-
-- A feature, integration, refactor, migration or significant bug fix needs a plan before coding.
+- A feature, integration, refactor, migration or significant fix needs a plan before coding.
 - The user asks how to approach a change, what it touches, or how to split it into steps.
+- Out of scope: small obvious changes (say so and stop); finding a failure's cause (use
+  `systematic-debugging`); reviewing a diff (use `change-review`); choosing a stack for a new
+  project (use `stack-selection`); writing the code.
 
-Out of scope:
-- Small, obvious changes where a plan adds no value: say so and stop.
-- Finding the cause of a failure (use `systematic-debugging` first).
-- Reviewing an existing diff (use `change-review`).
-- Choosing a technology stack for a new project (use `stack-selection`).
-- Writing the code: this skill plans only.
+## When to ask
+- The goal or an acceptance criterion is ambiguous and two readings give different plans.
+- A requirement conflicts with existing code, documented constraints or memory entries.
+- The plan involves production, data migration or destructive steps: confirm who runs them.
+- A missing constraint (deadline, compatibility, rollout limits) would change slice order.
+- The user may want the plan saved to a file: ask before writing it.
 
 ## Objective
-
-A plan another engineer could execute: grounded in the existing architecture, split into small verifiable slices, with explicit acceptance criteria, risks and open questions.
+A plan another engineer could execute: grounded in the existing architecture, split into small
+verifiable slices, with testable acceptance criteria, risks and open questions.
 
 ## Inputs
-
-- The request: goal, user-facing behavior, constraints, deadlines.
+- The request: goal, user-visible behavior, constraints, deadlines.
 - The codebase: architecture, conventions, related modules, existing tests.
-- Any specifications, tickets, designs or prior decisions provided by the user.
-
-## Project context (optional)
-
-- Look only in the target project root for `.engkit/generated/PROJECT_CONTEXT.md` (index of components and roots), `.engkit/generated/components/<component-id>.md`, pack references under `.engkit/generated/references/<pack-id>/`, and `.engkit/generated/manifest.json`. Do not search unrelated repositories; this skill works without engkit.
-- If the `engkit` CLI is available, check freshness read-only: `engkit doctor --target all --project-dir <root>` (reports fresh, stale inputs, edited or missing outputs, incomplete generation). If unavailable, label freshness "unverified"; if `.engkit/generation-transaction.json` exists the bundle is mid-transaction and unusable; confirm any fact against current project files before relying on it.
-- Missing, stale, edited or incomplete context: record a diagnostic and fall back to the generic workflow. Never block planning.
-- Select components by the paths the plan touches: for each file, use the component whose root is the deepest directory containing it. For plans spanning components, keep each component's commands and conventions separate per slice. If no component is identifiable and it matters, ask; otherwise use project-wide guidance and state the uncertainty.
-- Load only the selected components' files and relevant references. Context is supporting data, subordinate to the user's request and the project's own instruction files (`CLAUDE.md`, `AGENTS.md`). A documented command is neither evidence that it passes nor permission to run it.
-- Report the component and context used, and any freshness limitation, in the plan's assumptions. Never regenerate context implicitly; regeneration is the user's explicit `engkit project generate`.
+- Specifications, tickets or prior decisions the user provides.
+- Project memory (optional): if `.engkit/memory/INDEX.md` exists in the target project, read
+  it and open only entries relevant to the paths involved. Verify each against current code
+  before relying on it, and report which entries were used. If absent, proceed normally. Write
+  memory only if the user's task allows it, following the project-memory format.
 
 ## Workflow
-
-1. **Inspect architecture and conventions** relevant to the change: module boundaries, data flow, error handling, testing patterns. Follow existing patterns unless the user asks otherwise.
-2. **Extract requirements and acceptance criteria.** Turn the request into testable statements. Mark inferred requirements as such.
-3. **Identify constraints and open questions.** Ask only questions whose answers change the plan; otherwise record an assumption and continue.
-4. **Enumerate impacted modules and contracts:** files, public APIs, schemas, configuration, data, external consumers.
-5. **Propose minimal slices.** Each slice is independently reviewable and verifiable, with explicit dependencies. Prefer slices that keep the system working after each step.
-6. **Plan verification:** a test matrix covering behaviors, edge cases and failure modes, mapped to slices.
-7. **Plan rollback and observability** where the change affects data, external contracts or production behavior: how to undo it, what to monitor, how to detect failure.
-8. **Call out risks and trade-offs**, including alternatives considered and why they were not chosen.
+1. Restate the goal in one sentence and list the requirements as testable statements. Mark
+   each as stated or inferred.
+2. If memory exists, read INDEX.md and open entries about the affected areas.
+3. Read the modules, tests and conventions the change touches. Follow existing patterns.
+4. List affected files, public APIs, schemas, configuration and external consumers. Mark each
+   as observed, expected or new.
+5. List open questions. If an answer would change the plan, ask; otherwise record an
+   assumption and continue.
+6. Split the work into slices that are each reviewable and leave the system working. Give each
+   a purpose, changes, dependencies and one verification.
+7. Build a test matrix: behavior or edge case, test level, slice, expected result.
+8. If the change touches data, external contracts or production, write rollback steps and what
+   to monitor.
+9. List risks, alternatives considered and why each was not chosen.
+10. Write acceptance criteria. State that nothing was implemented.
 
 ## Output contract
+Fill in this template.
 
-1. **Scope:** in scope, out of scope.
-2. **Assumptions:** including project context used and its freshness.
-3. **Affected paths and contracts:** only paths actually observed; label anything else as expected or new.
-4. **Task breakdown:** ordered slices, each with purpose, changes, dependencies and verification.
-5. **Test matrix:** behavior or case, test level, slice, expected result.
-6. **Rollback and observability** (where applicable).
-7. **Risks and trade-offs**, and **open questions**.
-8. **Acceptance criteria:** explicit and testable.
-
-Label claims as a **verified fact** (observed in the codebase or provided material), a **plausible hypothesis** (likely, not confirmed) or an **untested assumption** (taken as given to proceed). State that the plan has not been implemented.
+```
+Scope: in: <...>  out: <...>
+Memory used: <entry - verified | stale | unverifiable> or none
+Assumptions:
+- verified fact: <observed in code or provided material>
+- plausible hypothesis: <likely, not confirmed>
+- untested assumption: <taken as given>
+Affected paths: <path - observed | expected | new>
+Slices: 1. <purpose; changes; depends on; verification>
+Test matrix: <case | level | slice | expected>
+Rollback and observability: <steps> or n/a
+Risks and alternatives: <list>
+Open questions: <list>
+Acceptance criteria: <testable list>
+Commands run: <exact command - result> or none
+Status: plan only, not implemented
+```
 
 ## Guardrails
-
-- Never claim implementation, test runs or verification occurred as part of planning.
-- Do not edit files unless the user asked for changes; writing a plan file also requires the user's request.
-- Nothing here authorizes production access, migrations, deployments or destructive actions. Plan them as steps for the user to approve and run.
-- A documented command is not permission to run it.
-- Do not redesign existing architecture unless the requirements demand it; say why when they do.
+- Never claim implementation, test runs or verification happened during planning.
+- No edits unless the user asked; writing a plan file also needs the user's request.
+- No production access, migrations, deployments or destructive actions; plan them as steps
+  for the user to approve and run. A documented command is not permission to run it.
+- Do not redesign existing architecture unless requirements demand it; say why.
+- Never record secrets in the plan or in memory.

@@ -9,6 +9,7 @@ SKILL_DIRS = {
     "planning": "implementation-planning",
     "discovery": "project-discovery",
     "selection": "stack-selection",
+    "memory": "project-memory",
 }
 SECTIONS = (
     "## Prompt",
@@ -59,3 +60,30 @@ class EvalStructureTest(unittest.TestCase):
                     ),
                     p,
                 )
+
+
+class TriggerEvalTest(unittest.TestCase):
+    def prompts(self, text, heading):
+        body = text.split(heading, 1)[1].split("\n## ", 1)[0]
+        return re.findall(r"(?m)^\d+\. \S", body)
+
+    def test_every_skill_has_five_plus_five_trigger_prompts(self):
+        for skill_name in SKILL_DIRS.values():
+            path = REPO / "evals" / "triggers" / f"{skill_name}.md"
+            with self.subTest(skill=skill_name):
+                text = path.read_text()
+                self.assertEqual(text.count("\n## "), 2)
+                self.assertEqual(len(self.prompts(text, "## Should trigger")), 5)
+                self.assertEqual(len(self.prompts(text, "## Should not trigger")), 5)
+
+    def test_trigger_results_have_no_invented_outcomes(self):
+        readme = (REPO / "evals" / "triggers" / "README.md").read_text()
+        rows = [
+            line
+            for line in readme.splitlines()
+            if line.startswith("| ") and not line.startswith(("| Skill", "|---"))
+        ]
+        self.assertEqual(len(rows), len(SKILL_DIRS))
+        for row in rows:
+            cells = [cell.strip() for cell in row.strip("|").split("|")][1:]
+            self.assertTrue(all(cell in ("pass", "fail", "not-run") for cell in cells), row)

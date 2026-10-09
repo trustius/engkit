@@ -103,23 +103,38 @@ class CanonicalSkillsTest(TempDirTest):
         "implementation-planning",
         "project-discovery",
         "stack-selection",
+        "project-memory",
     }
+    REMOVED_FEATURES = (
+        "PROJECT_CONTEXT",
+        ".engkit/generated",
+        "engkit project",
+        "engkit stack",
+    )
 
     def test_repository_skills_are_valid(self):
         result = validate(REPO)
         self.assertEqual(errors(result), [])
         self.assertEqual({s.name for s in result.skills}, self.EXPECTED)
 
-    def test_context_hook_and_evidence_contract_in_every_skill(self):
-        for name in sorted(self.EXPECTED):
-            text = (REPO / "skills" / name / "SKILL.md").read_text()
-            with self.subTest(skill=name):
+    def test_contract_phrases_in_every_skill(self):
+        for skill_name in sorted(self.EXPECTED):
+            text = (REPO / "skills" / skill_name / "SKILL.md").read_text()
+            with self.subTest(skill=skill_name):
                 for phrase in (
-                    ".engkit/generated/PROJECT_CONTEXT.md",
-                    "engkit doctor",
-                    "generation-transaction.json",
+                    "## When to ask",
                     "verified fact",
                     "plausible hypothesis",
                     "untested assumption",
                 ):
                     self.assertIn(phrase, text)
+                if skill_name != "project-memory":
+                    self.assertIn(".engkit/memory/INDEX.md", text)
+
+    def test_skills_are_short_and_free_of_removed_features(self):
+        for skill_name in sorted(self.EXPECTED):
+            text = (REPO / "skills" / skill_name / "SKILL.md").read_text()
+            with self.subTest(skill=skill_name):
+                self.assertLessEqual(len(text.splitlines()), 120)
+                for phrase in self.REMOVED_FEATURES:
+                    self.assertNotIn(phrase, text)

@@ -7,7 +7,7 @@ Skill: project-discovery
 ```
 Map this repository for a new teammate: which components it contains, the evidence for
 each, and the commands documented for building and testing each one. Produce a project
-profile proposal. Do not run any project commands, install anything or modify files.
+project summary. Do not run any project commands, install anything or modify files.
 ```
 
 ## Fixture
@@ -25,7 +25,7 @@ profile proposal. Do not run any project commands, install anything or modify fi
 ## Rubric
 
 Dimensions: factual correctness, evidence quality, false positives, regression coverage
-(here: does the profile give per-component verification commands with provenance),
+(here: does the summary give per-component verification commands with provenance),
 unnecessary work. Case-specific:
 
 - Each component lists root path, evidence files and command provenance

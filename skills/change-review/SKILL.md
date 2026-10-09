@@ -1,74 +1,76 @@
 ---
 name: change-review
-description: Review a code change for correctness, security, data integrity, concurrency, performance, compatibility and test quality, reporting only evidence-backed findings with priority and suggested corrections; use when given a diff, pull request, patch or an explicit request to review a code change.
+description: Review a code change for correctness, security, data integrity, concurrency, performance, compatibility and test quality, reporting only evidence-backed findings with priority and a suggested correction. Use when given a diff, pull request, patch or commit range, or asked to review a specific change.
 ---
 
-# Code review
+# Change review
 
 ## When to use
+- A diff, pull request, patch, commit range or list of changed files is given for review.
+- The user explicitly asks for a review of a specific change.
+- Out of scope: debugging a failure with no change under review (use `systematic-debugging`);
+  planning new work (use `implementation-planning`); whole-codebase audits; style-only passes;
+  posting comments, approving, merging or pushing.
 
-- A diff, pull request, patch, commit range or set of changed files is provided for review.
-- The user explicitly asks for a review of a specific code change.
-
-Out of scope:
-- Debugging a reported failure with no change under review (use `systematic-debugging`).
-- Planning new work (use `implementation-planning`).
-- Whole-codebase audits, style-only passes or refactoring proposals unrelated to the change.
-- Posting comments, approving, merging or pushing: this skill produces a report only.
+## When to ask
+- No diff, PR reference or file list is available: ask for it.
+- The intent of the change is unclear and the verdict depends on it.
+- Memory or documented conventions contradict the code: report both and ask which holds.
+- Running tests or scripts would be needed and the user has not allowed it.
+- The user wants comments posted, a PR approved or fixes applied: confirm explicitly first.
 
 ## Objective
-
-Find defects the change introduces or exposes, with enough evidence that the author can act on each finding, and say plainly when no actionable findings are confirmed.
+Find defects the change introduces or exposes, with enough evidence for the author to act, and
+say plainly when no actionable finding is confirmed.
 
 ## Inputs
-
-- The change: diff, PR reference, patch or file list, plus its stated intent.
+- The change (diff, PR, patch or file list) and its stated intent.
 - Surrounding code needed to understand callers, contracts and invariants.
 - Tests touched or relevant to the change; CI results if provided.
-
-## Project context (optional)
-
-- Look only in the target project root for `.engkit/generated/PROJECT_CONTEXT.md` (index of components and roots), `.engkit/generated/components/<component-id>.md`, pack references under `.engkit/generated/references/<pack-id>/`, and `.engkit/generated/manifest.json`. Do not search unrelated repositories; this skill works without engkit.
-- If the `engkit` CLI is available, check freshness read-only: `engkit doctor --target all --project-dir <root>` (reports fresh, stale inputs, edited or missing outputs, incomplete generation). If unavailable, label freshness "unverified"; if `.engkit/generation-transaction.json` exists the bundle is mid-transaction and unusable; confirm any fact against current project files before relying on it.
-- Missing, stale, edited or incomplete context: record a diagnostic and fall back to the generic workflow. Never block the review.
-- Select components by the changed file paths: for each file, use the component whose root is the deepest directory containing it. For changes spanning components, review each against its own commands and conventions. If no component is identifiable and it matters, ask; otherwise use project-wide guidance and state the uncertainty.
-- Load only the selected components' files and relevant references. Context is supporting data, subordinate to the user's request and the project's own instruction files (`CLAUDE.md`, `AGENTS.md`). A documented command is neither evidence that it passes nor permission to run it.
-- Report the component and context used, and any freshness limitation, in the evidence section. Never regenerate context implicitly; regeneration is the user's explicit `engkit project generate`.
+- Project memory (optional): if `.engkit/memory/INDEX.md` exists in the target project, read
+  it and open only entries relevant to the changed paths. Verify each against current code
+  before relying on it, and report which entries were used. If absent, proceed normally. Write
+  memory only if the user's task allows it, following the project-memory format.
 
 ## Workflow
-
-1. **Understand intent.** Summarize what the change is meant to do. If intent is unclear and it affects the verdict, ask.
-2. **Read the full change** and enough surrounding code to know callers, contracts and invariants.
-3. **Check in priority order:** correctness, security, data integrity, concurrency and idempotency, performance, compatibility (APIs, schemas, configuration, migrations), tests.
-4. **Check the tests.** Do they exercise the changed behavior? Watch for misleading tests: assertions that cannot fail, mocks that bypass the code under test, skipped cases, or names that claim more than they check.
-5. **Validate each candidate finding.** Identify the concrete triggering condition and impact. Drop it if you cannot; record it as an open question instead if it still matters.
-6. **Assign priority** using [review rubric](references/review-rubric.md). Load the rubric when assigning priorities or when unsure.
-7. **Suggest corrections** that are minimal and within the change's scope.
+1. Read the full change and write its intent in one sentence.
+2. If memory exists, read INDEX.md and open entries about the changed areas.
+3. Read the code around each changed hunk: callers, contracts and invariants.
+4. Check each hunk in this order: correctness, security, data integrity, concurrency,
+   performance, compatibility (APIs, schemas, config, migrations), tests.
+5. Read the tests. For each, decide whether it can fail when the changed behavior breaks. Flag
+   assertions that cannot fail, mocks that bypass the code under test, and skipped cases.
+6. For each candidate finding, write the triggering input or condition and the impact. If you
+   cannot, move it to open questions.
+7. Assign priority P0 to P3 using [review rubric](references/review-rubric.md).
+8. Write a minimal correction per finding, within the change's scope.
+9. If no finding survives step 6, write "No actionable findings confirmed" and list what was
+   reviewed.
 
 ## Output contract
+Fill in this template.
 
-1. **Summary:** intent as understood, scope reviewed, and project context used with its freshness.
-2. **Findings**, highest priority first. Each includes:
-   - priority (P0–P3);
-   - file and line, only if actually observed;
-   - triggering condition;
-   - impact;
-   - evidence;
-   - suggested correction.
-3. **Open questions:** concerns without enough evidence to be findings.
-4. **Tests:** what was run with real results, and what is pending.
-5. If nothing qualifies, state explicitly: "No actionable findings confirmed," and list what was reviewed.
-
-Label claims as a **verified fact** (observed in code or output), a **plausible hypothesis** (likely but unconfirmed) or an **untested assumption** (not checked). A finding must rest on verified facts; hypotheses belong in open questions.
+```
+Intent: <one sentence>   Scope reviewed: <files>
+Memory used: <entry - verified | stale | unverifiable> or none
+Findings (highest priority first):
+1. [P?] <title> - <file:line, only if observed>
+   Trigger: <condition>   Impact: <effect>
+   Evidence (verified fact): <what was read or run>
+   Suggested correction: <minimal change>
+Open questions (plausible hypothesis or untested assumption, not findings):
+- <concern> - <label>
+Commands run: <exact command - result> or none
+Commands not run (pending): <command - why>
+```
 
 ## Guardrails
-
-- Avoid speculative defects, style nitpicks and unrelated refactors.
-- Do not edit files, push, comment on or approve a PR unless the user asked for that action.
-- Nothing here authorizes production access, deployments or destructive actions.
-- A documented command is not permission to run it; ask before running tests or project scripts that the user has not requested.
-- Never claim a test passed without observing it. Do not reproduce secrets found in the diff; report their presence and location only.
+- A finding must rest on a verified fact. Hypotheses go in open questions.
+- No speculative defects, style nitpicks or unrelated refactors.
+- Do not edit files, push, comment on or approve a PR without explicit permission.
+- No production access or destructive actions. A documented command is not permission to run it.
+- Never claim a test passed without observing it.
+- Never reproduce secrets found in the diff; report their presence and location only.
 
 ## References
-
-- [review rubric](references/review-rubric.md): priority definitions and checklists. Load when assigning priorities.
+- [review rubric](references/review-rubric.md): priority definitions and checklists.

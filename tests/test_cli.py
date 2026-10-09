@@ -1,7 +1,9 @@
 import json
+import shutil
+import unittest
 
 from engkit.errors import EXIT_CONFLICT, EXIT_FAILURE, EXIT_OK, EXIT_USAGE
-from tests.helpers import TempDirTest, resources_at, run_cli, skill_text, snapshot
+from tests.helpers import TempDirTest, make_repo, resources_at, run_cli, skill_text, snapshot
 
 
 class CliTest(TempDirTest):
@@ -128,3 +130,43 @@ class CliTest(TempDirTest):
         )
         code, out, _ = run_cli(["doctor", "--project-dir", str(project), "--project-only"])
         self.assertIn("== Project memory", out)
+
+
+class LifecycleCliTest(TempDirTest):
+    def test_install_argument_rules(self):
+        remote = ["--source", "file:///nowhere"]
+        for argv in (
+            ["install", "--target", "claude"],
+            ["install", "x", "--target", "claude", "--skill", "y"],
+            ["install", "x", "--target", "claude", "--ref", "main"],
+            ["install", "x", "--target", "claude", "--path", "d"],
+            ["install", "--target", "claude", *remote],
+            ["install", "x", "--target", "claude", "--skill", "y", *remote],
+            ["list", "--ref", "main"],
+            ["uninstall", "--target", "claude"],
+        ):
+            with self.subTest(argv=argv):
+                self.assertEqual(run_cli(argv)[0], EXIT_USAGE)
+
+    def test_builtin_install_update_uninstall(self):
+        project = self.make_project()
+        where = ["--project-dir", str(project)]
+        run_cli(["install", "change-review", "--target", "all", *where])
+        code, out, _ = run_cli(["update", *where])
+        self.assertEqual(code, EXIT_OK)
+        self.assertIn("up to date", out)
+        code, out, _ = run_cli(["uninstall", "change-review", "--target", "claude", *where])
+        self.assertEqual((code, "uninstalled" in out), (EXIT_OK, True))
+        self.assertFalse((project / ".claude/skills/change-review").exists())
+        code, _, err = run_cli(["uninstall", "change-review", "--target", "claude", *where])
+        self.assertEqual((code, "not managed" in err), (EXIT_FAILURE, True))
+        (project / ".agents/skills/change-review/SKILL.md").write_text("mine")
+        code, _, err = run_cli(["uninstall", "change-review", "--target", "codex", *where])
+        self.assertEqual((code, "conflict" in err), (EXIT_CONFLICT, True))
+
+    @unittest.skipUnless(shutil.which("git"), "git is required")
+    def test_list_source(self):
+        repo = make_repo(self.tmp / "remote", {"skills/demo/SKILL.md": skill_text("demo")})
+        code, out, _ = run_cli(["list", "--source", f"file://{repo}", "--json"])
+        self.assertEqual(code, EXIT_OK)
+        self.assertEqual([item["name"] for item in json.loads(out)["skills"]], ["demo"])

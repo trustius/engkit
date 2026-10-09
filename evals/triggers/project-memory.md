@@ -1,0 +1,19 @@
+# Trigger evals: project-memory
+
+Synthetic prompts. Run them as described in README.md.
+
+## Should trigger
+
+1. Before you start, check what we decided earlier about retries in this project.
+2. Remember that we chose queue-based retries and why, so the next session knows.
+3. Record this gotcha in project memory: the staging database resets every night.
+4. Update the memory entry about the deployment convention; it is out of date.
+5. Read the project memory index and tell me which entries are relevant to the billing module.
+
+## Should not trigger
+
+1. Summarize what this function does.
+2. Write a changelog entry for the release.
+3. Store this API key so I don't have to paste it again.
+4. Add a section to the README about local setup.
+5. Fix the failing test in the payments module.

@@ -237,15 +237,3 @@ def _raise_rename_error(err: int, src: Path, dst: Path) -> None:
     if err in unsupported:
         raise NoReplaceUnsupported(err, os.strerror(err), str(dst))
     raise OSError(err, os.strerror(err), str(src))
-
-
-def pid_alive(pid: int) -> bool:
-    if pid <= 0:
-        return False
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        return False
-    except OSError:
-        return True
-    return True

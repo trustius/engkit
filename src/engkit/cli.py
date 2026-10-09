@@ -42,10 +42,24 @@ def _resources() -> Path:
         raise EngkitError(str(exc), EXIT_IO) from None
 
 
-def cmd_list(args) -> int:
-    from engkit.catalog import discover
+def _usage(message: str) -> EngkitError:
+    return EngkitError(message, EXIT_USAGE)
 
-    result = discover(_resources())
+
+def _catalog(args):
+    from engkit import sources
+    from engkit.catalog import discover, discover_dir
+
+    if not args.source:
+        if args.ref or args.path:
+            raise _usage("--ref and --path require --source")
+        return discover(_resources())
+    with sources.fetch(args.source, args.ref, args.path) as fetched:
+        return discover_dir(sources.skills_dir(fetched.root, args.path))
+
+
+def cmd_list(args) -> int:
+    result = _catalog(args)
     if args.json:
         skills = [{"name": skill.name, "description": skill.description} for skill in result.skills]
         issues = [issue.format() for issue in result.issues]
@@ -74,19 +88,51 @@ def cmd_validate(args) -> int:
     return EXIT_OK
 
 
-def cmd_install(args) -> int:
-    from engkit.installer import install
-
+def _scope(args) -> dict:
     scope = "user" if args.global_ else "project"
-    results = install(
-        _resources(), args.name, args.target, scope=scope, project_dir=args.project_dir
-    )
+    return {"scope": scope, "project_dir": args.project_dir}
+
+
+def _report(results) -> int:
     for result in results:
         stream = sys.stdout if result.exit_code == EXIT_OK else sys.stderr
         print(result.format(), file=stream)
     if len(results) > 1:
         print("note: each target is installed independently (no cross-platform transaction)")
     return max((result.exit_code for result in results), default=EXIT_OK)
+
+
+def cmd_install(args) -> int:
+    from engkit import installer
+
+    if args.source:
+        if args.name or not args.skill:
+            raise _usage("--source needs at least one --skill and no positional NAME")
+        names = list(dict.fromkeys(args.skill))
+        options = {"yes": args.yes, **_scope(args)}
+        results = installer.install_remote(
+            args.source, args.ref, args.path, names, args.target, **options
+        )
+        return _report(results)
+    if not args.name or args.skill or args.ref or args.path:
+        raise _usage("without --source give exactly one NAME and no --skill/--ref/--path")
+    return _report(installer.install(_resources(), args.name, args.target, **_scope(args)))
+
+
+def cmd_update(args) -> int:
+    from engkit import installer
+
+    names = [args.name] if args.name else []
+    results = installer.update(_resources(), names, args.target, yes=args.yes, **_scope(args))
+    if not results:
+        print("nothing to update: no skills in the lock")
+    return _report(results)
+
+
+def cmd_uninstall(args) -> int:
+    from engkit import installer
+
+    return _report(installer.uninstall(args.name, args.target, **_scope(args)))
 
 
 def cmd_doctor(args) -> int:
@@ -150,9 +196,24 @@ class _Parser(argparse.ArgumentParser):
         self.exit(EXIT_USAGE, f"{self.prog}: error: {message}\n")
 
 
+def _add_source(parser) -> None:
+    parser.add_argument("--source", help="git URL (https://, ssh://, file:// or user@host:path)")
+    parser.add_argument("--ref", help="branch, tag or commit of --source (default: HEAD)")
+    parser.add_argument("--path", help="directory of skills inside --source")
+
+
+def _add_location(parser) -> None:
+    location = parser.add_mutually_exclusive_group()
+    location.add_argument("--project-dir", help="project root (default: current directory)")
+    location.add_argument(
+        "--global", dest="global_", action="store_true", help="use the user's home directory"
+    )
+
+
 def _add_list(subparsers) -> None:
-    parser = subparsers.add_parser("list", help="list canonical skills (read-only)")
+    parser = subparsers.add_parser("list", help="list skills (built-in or from --source)")
     parser.add_argument("--json", action="store_true", help="machine-readable output")
+    _add_source(parser)
     parser.set_defaults(func=cmd_list)
 
 
@@ -169,17 +230,32 @@ def _add_install(subparsers) -> None:
         epilog=EXIT_CODES_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("name", help="skill name")
+    parser.add_argument("name", nargs="?", help="built-in skill name (without --source)")
     parser.add_argument("--target", required=True, choices=TARGET_CHOICES)
-    location = parser.add_mutually_exclusive_group()
-    location.add_argument("--project-dir", help="project root (default: current directory)")
-    location.add_argument(
-        "--global",
-        dest="global_",
-        action="store_true",
-        help="install into the user's home skills directory",
-    )
+    _add_source(parser)
+    parser.add_argument("--skill", action="append", help="skill to install from --source")
+    parser.add_argument("--yes", action="store_true", help="install from --source (else preview)")
+    _add_location(parser)
     parser.set_defaults(func=cmd_install)
+
+
+def _add_update(subparsers) -> None:
+    parser = subparsers.add_parser(
+        "update", help="update unmodified locked skills", epilog=EXIT_CODES_HELP
+    )
+    parser.add_argument("name", nargs="?", help="skill name (default: all locked skills)")
+    parser.add_argument("--target", default="all", choices=TARGET_CHOICES)
+    parser.add_argument("--yes", action="store_true", help="apply updates from git sources")
+    _add_location(parser)
+    parser.set_defaults(func=cmd_update)
+
+
+def _add_uninstall(subparsers) -> None:
+    parser = subparsers.add_parser("uninstall", help="remove an unmodified locked skill")
+    parser.add_argument("name")
+    parser.add_argument("--target", required=True, choices=TARGET_CHOICES)
+    _add_location(parser)
+    parser.set_defaults(func=cmd_uninstall)
 
 
 def _add_doctor(subparsers) -> None:
@@ -220,6 +296,8 @@ def build_parser() -> argparse.ArgumentParser:
     _add_list(subparsers)
     _add_validate(subparsers)
     _add_install(subparsers)
+    _add_update(subparsers)
+    _add_uninstall(subparsers)
     _add_doctor(subparsers)
     _add_memory(subparsers)
     return parser

@@ -1,9 +1,10 @@
 import os
+import shutil
 import threading
 from pathlib import Path
 from unittest import mock
 
-from engkit import fsutil, installer
+from engkit import fsutil, installer, lockfile
 from engkit.errors import EXIT_BUSY, EXIT_CONFLICT, EXIT_IO, EXIT_OK
 from tests.helpers import TempDirTest, skill_text, snapshot
 
@@ -269,6 +270,207 @@ class InstallerTest(TempDirTest):
         os.chmod(dest, 0o000)
         self.addCleanup(os.chmod, dest, 0o755)
         self.assertEqual(installer.status_of(source, dest), "unsafe")
+
+
+class LockedLifecycleTest(TempDirTest):
+    """Install, update and uninstall of built-in skills, driven through the lock."""
+
+    def setUp(self):
+        super().setUp()
+        self.toolkit = self.make_toolkit({"demo": skill_text("demo")})
+        self.project = self.make_project()
+        self.dest = self.project / ".claude/skills/demo"
+
+    def install(self, target="claude"):
+        return installer.install(self.toolkit, "demo", target, project_dir=self.project)
+
+    def update(self, *names, target="all", **kw):
+        return installer.update(self.toolkit, list(names), target, project_dir=self.project, **kw)
+
+    def uninstall(self, target="claude"):
+        return installer.uninstall("demo", target, project_dir=self.project)
+
+    def lock(self):
+        return lockfile.read(self.project)
+
+    def change_canonical(self, text="changed\n"):
+        (self.toolkit / "skills/demo/SKILL.md").write_text(skill_text("demo", "New text."))
+        (self.toolkit / "skills/demo/extra.md").write_text(text)
+        (self.toolkit / "skills/demo/scripts").mkdir(exist_ok=True)
+        marker = self.tmp / "EXECUTED"
+        script = self.toolkit / "skills/demo/scripts/run.sh"
+        script.write_text(f"#!/bin/sh\ntouch {marker}\n")
+        os.chmod(script, 0o755)
+        return marker
+
+    def test_install_records_builtin_entry(self):
+        self.install("all")
+        entry = self.lock()["demo"]
+        self.assertEqual(entry["source"], "builtin")
+        self.assertEqual((entry["ref"], entry["path"], entry["commit"]), (None, None, None))
+        self.assertEqual(entry["targets"], ["claude", "codex"])
+        expected = lockfile.digest(fsutil.tree_snapshot(self.dest))
+        self.assertEqual(entry["content_sha256"], expected)
+
+    def test_conflicting_install_is_not_recorded(self):
+        self.dest.mkdir(parents=True)
+        (self.dest / "SKILL.md").write_text("mine\n")
+        self.assertEqual(self.install()[0].status, "conflict")
+        self.assertEqual(self.lock(), {})
+
+    def test_install_of_changed_content_conflicts_with_lock(self):
+        self.install("claude")
+        self.change_canonical()
+        result = self.install("codex")[0]
+        self.assertEqual((result.status, result.exit_code), ("conflict", EXIT_CONFLICT))
+        self.assertFalse((self.project / ".agents").exists())
+
+    def test_update_replaces_pristine_copy_and_updates_lock(self):
+        self.install("all")
+        marker = self.change_canonical()
+        results = self.update("demo")
+        self.assertEqual([r.status for r in results], ["updated", "updated"])
+        for sub in (".claude/skills/demo", ".agents/skills/demo"):
+            self.assertEqual(
+                fsutil.tree_snapshot(self.project / sub),
+                fsutil.tree_snapshot(self.toolkit / "skills/demo"),
+            )
+        expected = lockfile.digest(fsutil.tree_snapshot(self.dest))
+        self.assertEqual(self.lock()["demo"]["content_sha256"], expected)
+        self.assertEqual(os.listdir(self.project / ".engkit/staging"), [])
+        self.assertEqual(os.listdir(self.dest.parent), ["demo"])
+        self.assertFalse(marker.exists(), "updated scripts must never be executed")
+
+    def test_update_all_and_up_to_date(self):
+        self.install()
+        self.assertEqual([r.status for r in self.update()], ["up to date"])
+        self.change_canonical()
+        self.assertEqual([r.status for r in self.update()], ["updated"])
+        self.assertEqual([r.status for r in self.update()], ["up to date"])
+
+    def test_update_modified_copy_conflicts_and_is_untouched(self):
+        self.install()
+        self.change_canonical()
+        (self.dest / "SKILL.md").write_text("my edits\n")
+        before, lock_before = snapshot(self.project), self.lock()
+        result = self.update("demo")[0]
+        self.assertEqual((result.status, result.exit_code), ("conflict", EXIT_CONFLICT))
+        self.assertEqual(snapshot(self.project), before)
+        self.assertEqual(self.lock(), lock_before)
+
+    def test_update_unmanaged_is_refused(self):
+        self.dest.mkdir(parents=True)
+        (self.dest / "SKILL.md").write_text("mine\n")
+        result = self.update("demo")[0]
+        self.assertEqual((result.status, result.exit_code), ("not managed", 1))
+        self.assertEqual((self.dest / "SKILL.md").read_text(), "mine\n")
+        self.assertFalse((self.project / ".engkit").exists())
+
+    def test_update_swap_failure_rolls_back(self):
+        self.install()
+        self.change_canonical()
+        original, lock_before = fsutil.tree_snapshot(self.dest), self.lock()
+        for stage in ("update_staged", "update_published"):
+
+            def boom(hook_stage, target, stage=stage):
+                if hook_stage == stage:
+                    raise OSError("simulated failure")
+
+            with self.subTest(stage=stage), mock.patch.object(installer, "fault_hook", boom):
+                result = self.update("demo")[0]
+            self.assertEqual((result.status, result.exit_code), ("error", EXIT_IO))
+            self.assertEqual(fsutil.tree_snapshot(self.dest), original)
+            self.assertEqual(self.lock(), lock_before)
+            self.assertEqual(os.listdir(self.project / ".engkit/staging"), [])
+
+    def test_failed_rollback_keeps_original_and_reports_it(self):
+        self.install()
+        self.change_canonical()
+
+        def sabotage(stage, target):
+            if stage == "update_published":
+                shutil.rmtree(target)
+                target.mkdir()
+                (target / "intruder").write_text("x")
+                raise OSError("simulated failure")
+
+        with mock.patch.object(installer, "fault_hook", sabotage):
+            result = self.update("demo")[0]
+        self.assertEqual(result.status, "error")
+        self.assertIn("original kept at", result.detail)
+        self.assertEqual((self.dest / "intruder").read_text(), "x")
+        kept = self.project / ".engkit/staging"
+        self.assertTrue((next(kept.iterdir()) / "old/SKILL.md").is_file())
+
+    def test_partial_update_failure_is_retryable(self):
+        self.install("all")
+        self.change_canonical()
+        calls = []
+
+        def fail_second(stage, target):
+            if stage == "update_staged":
+                calls.append(target)
+                if len(calls) == 2:
+                    raise OSError("simulated failure")
+
+        with mock.patch.object(installer, "fault_hook", fail_second):
+            statuses = [r.status for r in self.update("demo")]
+        self.assertEqual(statuses, ["updated", "error"])
+        retry = [r.status for r in self.update("demo")]
+        self.assertEqual(retry, ["up to date", "updated"])
+        expected = lockfile.digest(fsutil.tree_snapshot(self.dest))
+        self.assertEqual(self.lock()["demo"]["content_sha256"], expected)
+
+    def test_global_scope_uses_home_lock(self):
+        installer.install(self.toolkit, "demo", "codex", scope="user")
+        self.change_canonical()
+        result = installer.update(self.toolkit, [], "all", scope="user")[0]
+        self.assertEqual(result.status, "updated")
+        self.assertIn("demo", lockfile.read(self.home))
+        self.assertTrue((self.home / ".codex/skills/demo/extra.md").is_file())
+        self.assertEqual(
+            installer.uninstall("demo", "codex", scope="user")[0].status, "uninstalled"
+        )
+        self.assertFalse((self.home / ".codex/skills/demo").exists())
+
+    def test_uninstall_pristine_removes_and_drops_lock_entry(self):
+        self.install("all")
+        self.assertEqual(self.uninstall("claude")[0].status, "uninstalled")
+        self.assertFalse(self.dest.exists())
+        self.assertEqual(self.lock()["demo"]["targets"], ["codex"])
+        self.assertEqual(self.uninstall("codex")[0].status, "uninstalled")
+        self.assertEqual(self.lock(), {})
+        self.assertEqual(os.listdir(self.project / ".engkit/staging"), [])
+
+    def test_uninstall_modified_conflicts_and_is_untouched(self):
+        self.install()
+        (self.dest / "SKILL.md").write_text("my edits\n")
+        before, lock_before = snapshot(self.project), self.lock()
+        result = self.uninstall()[0]
+        self.assertEqual((result.status, result.exit_code), ("conflict", EXIT_CONFLICT))
+        self.assertEqual(snapshot(self.project), before)
+        self.assertEqual(self.lock(), lock_before)
+
+    def test_uninstall_without_lock_entry_is_not_managed(self):
+        self.install("claude")
+        self.assertEqual(self.uninstall("codex")[0].status, "not managed")
+        self.dest.parent.mkdir(parents=True, exist_ok=True)
+        other = self.project / ".agents/skills/demo"
+        other.mkdir(parents=True)
+        (other / "SKILL.md").write_text("hand made\n")
+        self.assertEqual(self.uninstall("codex")[0].status, "not managed")
+        self.assertTrue(other.exists())
+        self.assertEqual(
+            installer.uninstall("nope", "all", project_dir=self.project)[0].exit_code, 1
+        )
+
+    def test_uninstall_refuses_symlinked_destination(self):
+        self.install()
+        shutil.move(self.dest, self.tmp / "real")
+        os.symlink(self.tmp / "real", self.dest)
+        result = self.uninstall()[0]
+        self.assertEqual(result.status, "conflict")
+        self.assertTrue((self.tmp / "real/SKILL.md").exists())
 
 
 def _loser_statuses(native: bool, expected: str) -> set[str]:

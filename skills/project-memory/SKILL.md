@@ -35,8 +35,9 @@ decision, convention, gotcha, task-state), `status` (verified, hypothesis, assum
 
 At task start:
 1. If `.engkit/memory/INDEX.md` exists, read it and open only the entries relevant to the task.
-2. Treat entries as possibly stale. Check each against current code before relying on it, and
-   note whether it was verified, stale or unverifiable.
+2. Treat entries as possibly stale. Check each against current code before relying on it.
+   If the code matches, mark it verified; if it differs, mark it stale and ask the user;
+   if it cannot be checked, mark it unverifiable.
 
 At task end, and only when the task permits writing files:
 1. Record only what cannot be derived from code or git: decisions with reasons, gotchas,
@@ -57,10 +58,12 @@ Use this template.
 Memory read: <entry> - verified | stale | unverifiable (evidence)
 Memory written: created <entry>; updated <entry>; deleted <entry> (or "none")
 Not recorded: <item> - <reason: derivable from code, sensitive, uncertain>
-Findings:
-- Verified fact: ...
-- Plausible hypothesis: ...
-- Untested assumption: ...
+Claims (label each as verified fact, plausible hypothesis or untested assumption):
+- verified fact: ...
+- plausible hypothesis: ...
+- untested assumption: ...
+Commands run: <exact command - result> or none
+Commands not run: <command - why>
 ```
 
 ## Guardrails

@@ -6,6 +6,7 @@ import contextlib
 import io
 import os
 import shutil
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -98,6 +99,32 @@ class TempDirTest(unittest.TestCase):
         return root
 
 
+GIT_IDENTITY = [
+    "-c",
+    "user.name=t",
+    "-c",
+    "user.email=t@example.test",
+    "-c",
+    "commit.gpgsign=false",
+]
+
+
+def git(repo: Path, *args: str) -> str:
+    done = subprocess.run(
+        ["git", *GIT_IDENTITY, *args], cwd=repo, check=True, capture_output=True, text=True
+    )
+    return done.stdout.strip()
+
+
+def commit_all(repo: Path, message: str = "c") -> str:
+    """Commit everything in a temp repo (created if needed) and return the commit SHA."""
+    if not (repo / ".git").exists():
+        git(repo, "init", "-q", "-b", "main")
+    git(repo, "add", "-A")
+    git(repo, "commit", "-q", "-m", message)
+    return git(repo, "rev-parse", "HEAD")
+
+
 def snapshot(root: Path) -> dict[str, object]:
     """All entries (files with bytes, dirs, symlinks) below root, for no-write assertions."""
     out: dict[str, object] = {}
@@ -136,3 +163,18 @@ def run_cli(argv: list[str], cwd: Path | None = None) -> tuple[int, str, str]:
 def resources_at(root: Path):
     with mock.patch("engkit.resources.resource_root", return_value=root):
         yield
+
+
+def write_tree(root: Path, files: dict[str, str]) -> None:
+    for rel, text in files.items():
+        path = root / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text)
+
+
+def make_repo(root: Path, files: dict[str, str]) -> Path:
+    """A committed git repository at ``root``; clone it with ``file://`` + path."""
+    root.mkdir(parents=True)
+    write_tree(root, files)
+    commit_all(root)
+    return root
