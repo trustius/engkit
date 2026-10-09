@@ -27,7 +27,7 @@ classifiers = [
 dependencies = ["PyYAML>=6.0,<7"]
 
 [project.optional-dependencies]
-dev = ["ruff==0.16.10", "build==1.6.1", "twine==7.0.0"]
+dev = ["ruff==0.16.10", "build==1.6.1", "setuptools==84.0.0", "twine==7.0.0"]
 
 [project.urls]
 Homepage = "https://github.com/trustius/engkit"

@@ -1,6 +1,7 @@
 """Static checks on the GitHub Actions workflows (no network, no execution)."""
 
 import re
+import tomllib
 import unittest
 from pathlib import Path
 
@@ -90,6 +91,26 @@ class WorkflowTests(unittest.TestCase):
     def test_testpypi_does_not_skip_existing(self):
         for step in steps_of(self.release["jobs"]["publish-testpypi"]):
             self.assertNotIn("skip-existing", step.get("with", {}))
+
+    def test_dev_extra_provides_the_build_tools_the_distribution_test_needs(self):
+        # The distribution test builds with --no-isolation, and virtual environments on
+        # Python 3.12+ ship without setuptools, so the dev extra must provide it.
+        root = WORKFLOWS.parent.parent
+        pyproject = tomllib.loads((root / "pyproject.toml").read_text())
+        dev = {
+            re.split(r"[=<>~!]", item)[0]: item
+            for item in pyproject["project"]["optional-dependencies"]["dev"]
+        }
+        self.assertIn("setuptools", dev)
+        self.assertIn("build", dev)
+        locked = (root / "requirements" / "release-build.txt").read_text()
+        for name in ("setuptools", "build"):
+            version = re.search(rf"^{name}==(\S+)", locked, re.M).group(1)
+            self.assertEqual(dev[name], f"{name}=={version}")
+        install = " ".join(
+            step.get("run", "") for step in steps_of(self.ci["jobs"]["distribution"])
+        )
+        self.assertIn('pip install -e ".[dev]"', install)
 
     def test_ci_matrix(self):
         matrix = self.ci["jobs"]["test"]["strategy"]["matrix"]

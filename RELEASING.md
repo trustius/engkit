@@ -92,7 +92,9 @@ No API tokens are stored anywhere. Publishing uses Trusted Publishing (OIDC).
 dependencies with hashes. To update one, change its version and replace the
 hash with the sha256 of the wheel published on PyPI
 (`pip download --no-deps --only-binary=:all: --python-version 3.13 <pkg>==<version>`
-then `shasum -a 256`). Keep `build` in the `dev` extra at the same version.
+then `shasum -a 256`). Keep `build` and `setuptools` in the `dev` extra at the same
+versions (a test checks this); the distribution test builds with the interpreter's own
+`setuptools`, which Python 3.12+ virtual environments do not include.
 
 ## If something goes wrong
 
