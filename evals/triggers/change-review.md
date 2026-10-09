@@ -4,10 +4,10 @@ Synthetic prompts. Run them as described in README.md.
 
 ## Should trigger
 
-1. Review this diff and tell me whether it is safe to merge.
+1. /change-review Review this diff and tell me whether it is safe to merge.
 2. Here is a patch that adds caching to the user lookup. Any bugs or race conditions?
 3. Can you look over my last three commits for correctness and missing tests?
-4. Check this pull request for security and data-integrity issues.
+4. Run /change-review on this pull request: check it for security and data-integrity issues.
 5. Do the tests in this change really cover the new retry behavior? Review the change.
 
 ## Should not trigger
@@ -17,3 +17,8 @@ Synthetic prompts. Run them as described in README.md.
 3. Compare three stacks for a new mobile backend.
 4. Describe the components of this repository and its build commands.
 5. Rewrite this function to be shorter and use list comprehensions.
+
+### Argument cases
+
+- 1. With argument: `/change-review src/billing/` -> Reviews the changes under that path (read-only), outputs the template with Next step.
+- 2. Without argument: `/change-review` -> Runs read-only git status and git diff HEAD and reviews uncommitted changes; if the tree is clean, asks which commit range or PR to review.

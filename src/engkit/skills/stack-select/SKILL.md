@@ -1,25 +1,26 @@
 ---
 name: stack-select
-description: Turn product requirements and constraints into two or three viable technology-stack options with trade-offs and a test strategy, and optionally record the choice as a project memory decision. Use when starting a new project or component, or when asked to compare stacks against stated requirements.
+description: Turn product requirements and constraints into two or three viable technology-stack options with trade-offs, a recommendation and a test strategy, and optionally record the choice as a project memory decision after confirmation. Use when starting a new project or component, or when asked to compare stacks against stated requirements. Not for describing an existing stack or for scaffolding and installing anything.
 ---
 
-# Stack selection
+# /stack-select
 
 ## When to use
-- Starting a new project or a component that has no established stack.
-- The user asks to compare stacks for stated requirements.
+- The user runs `/stack-select <requirements>` (Codex: `$stack-select`) or asks to compare
+  stacks for a new project or a component with no established stack.
 - An existing project has requirements its current stack demonstrably cannot meet.
-- Out of scope: describing an existing stack (use `engineering-onboard`); migrating a working
+- Out of scope: describing an existing stack (`/engineering-onboard`); migrating a working
   project without a demanding requirement; scaffolding, installing, provisioning or deploying;
-  picking a library for one scoped task (use `change-plan`).
+  picking a library for one scoped task (`/change-plan`).
 
 ## When to ask
+- No argument and no requirements in the request: ask for the product requirements first.
 - Requirements conflict (for example fully managed hosting vs on-premise only): name the
   conflict and ask which requirement wins.
 - A hard constraint is missing and would change the choice (team skills, budget, hosting,
   compliance).
 - The project already has a working stack: ask whether a change is really wanted.
-- You want to record the decision in memory or any file: ask for consent.
+- Before writing a decision entry to memory: show it and ask for confirmation.
 - A version or compatibility fact is needed and there is no network permission: ask.
 
 ## Objective
@@ -27,13 +28,15 @@ A defensible choice among a few viable options, with reasons, assumptions and tr
 explicit, plus a test strategy.
 
 ## Inputs
-- Product type, workload and scale, team experience, budget.
-- Operational, security and compliance constraints, integrations, deployment environment.
+- Arguments: the text typed after the command (Claude Code passes it as `ARGUMENTS: ...`; when
+  invoked automatically or in Codex, use the user's request) holds the product requirements.
+  With no argument, ask for them first.
+- Workload and scale, team experience, budget, operational, security and compliance
+  constraints, integrations, deployment environment.
 - For an existing project: its current stack, which is a constraint, not a defect.
 - Project memory (optional): if `.engkit/memory/INDEX.md` exists in the target project, read
   it and open only entries relevant to the task. Verify each against current code before
-  relying on it, and report which entries were used. If absent, proceed normally. Write memory
-  only with the user's consent, following the memory-save format.
+  relying on it, and report which entries were used. If absent, proceed normally.
 
 ## Workflow
 1. List the stated requirements and constraints, marking each hard or soft.
@@ -50,8 +53,9 @@ explicit, plus a test strategy.
    documentation this session with network permission. Never invent them.
 9. Recommend one option, with reasons and what evidence would change the recommendation.
 10. Write a test strategy: levels, tool categories, and the first three tests.
-11. If the user consented, write one `decision` memory entry (choice and reasons, status
-    `assumption` or `hypothesis` until validated) and add an INDEX.md line.
+11. Offer to record the decision. Only after the user confirms, write one `decision` entry in
+    `.engkit/memory/` (status `assumption` or `hypothesis`) and an INDEX.md line; otherwise
+    suggest `/memory-save`. If that directory is missing, tell the user to run `engkit init`.
 
 ## Output contract
 Fill in this template.
@@ -69,13 +73,14 @@ Claims:
 - untested assumption: <taken as given>
 Versions: unverified (no network) or verified with <source>
 Test strategy: <levels, tools, first tests>
-Memory written: <entry> or none (consent not given)
+Memory written: <entry> or none (not confirmed)
 Commands run: none
+Next step: /memory-save to record the decision (if not saved), or /change-plan
 ```
 
 ## Guardrails
 - Never migrate or rewrite an existing project silently; a recommendation is not authorization.
-- No file writes unless the user asked or consented.
+- Do not edit code. The only write allowed is a confirmed decision entry in `.engkit/memory/`.
 - No installs, scaffolding, provisioning, deployment, production access or destructive actions.
 - No network lookups without permission. A documented command is not permission to run it.
 - Never invent versions, benchmarks, costs or compatibility claims.

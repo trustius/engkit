@@ -4,7 +4,7 @@ Synthetic prompts. Run them as described in README.md.
 
 ## Should trigger
 
-1. Plan how to add CSV export to the reports page before we write any code.
+1. /change-plan Plan how to add CSV export to the reports page before we write any code.
 2. We need to integrate a payment provider. Break the work into slices with a test matrix.
 3. How should we approach splitting the monolith's billing module into a library? Plan only.
 4. Draft a rollout plan with rollback steps for changing the user table's primary key.
@@ -17,3 +17,8 @@ Synthetic prompts. Run them as described in README.md.
 3. Choose a language and framework for a brand-new analytics service.
 4. What does this repository contain and how do I build it?
 5. Fix the typo in the README heading.
+
+### Argument cases
+
+- 1. With argument: `/change-plan add CSV export to the reports page` -> Produces a plan only, nothing implemented, ending with Next step /change-review.
+- 2. Without argument: `/change-plan` -> Asks what change to plan before doing anything else.

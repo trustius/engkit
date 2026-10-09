@@ -15,6 +15,13 @@ Each skill has a file `<skill-name>.md` with 5 prompts under `## Should trigger`
    fails. Record the platform version and exact model next to the result.
 5. Never invent results. A cell stays `not-run` until a real session was executed.
 
+## Argument cases
+
+Each skill file also lists two argument cases under `### Argument cases`: the command typed
+with an argument, and the bare command. Run them the same way (fresh session, 3 runs) and
+check the expected behavior described; they are not counted in the 5+5 trigger prompts.
+Results stay `not-run` until a real session was executed.
+
 ## Results
 
 Allowed values: `pass`, `fail`, `not-run`. No agent runs have been performed yet.

@@ -4,7 +4,7 @@ Synthetic prompts. Run them as described in README.md.
 
 ## Should trigger
 
-1. We are starting a new booking service with a four-person team. Compare two or three stack options.
+1. /stack-select We are starting a new booking service with a four-person team. Compare two or three stack options.
 2. Help me choose a backend language and datastore for a low-traffic internal tool.
 3. Given these requirements, what technology stack would you recommend for a new web app?
 4. We need a stack for a new component that has no established tooling. Give options with trade-offs.
@@ -17,3 +17,8 @@ Synthetic prompts. Run them as described in README.md.
 3. Plan how to add pagination to the orders endpoint.
 4. Which version of this library fixes the memory leak? Debug it.
 5. Scaffold a new project and install the dependencies.
+
+### Argument cases
+
+- 1. With argument: `/stack-select internal booking tool, four-person team, six-week launch` -> Compares two or three options, recommends one, writes memory only after confirmation or suggests /memory-save.
+- 2. Without argument: `/stack-select` -> Asks for the product requirements before doing anything else.

@@ -1,19 +1,19 @@
 ---
 name: change-review
-description: Review a code change for correctness, security, data integrity, concurrency, performance, compatibility and test quality, reporting only evidence-backed findings with priority and a suggested correction. Use when given a diff, pull request, patch or commit range, or asked to review a specific change.
+description: Review a code change (uncommitted work, a diff, commit range or pull request) for correctness, security, data integrity, concurrency, performance, compatibility and test quality, reporting only evidence-backed findings with priority and a suggested correction. Use when asked to review a change before merge or commit. Not for debugging a failure with no change under review or for whole-codebase audits.
 ---
 
-# Change review
+# /change-review
 
 ## When to use
 - A diff, pull request, patch, commit range or list of changed files is given for review.
-- The user explicitly asks for a review of a specific change.
-- Out of scope: debugging a failure with no change under review (use `bug-investigate`);
-  planning new work (use `change-plan`); whole-codebase audits; style-only passes;
+- The user runs `/change-review` (Codex: `$change-review`) or asks for a review of a change.
+- Out of scope: debugging a failure with no change under review (`/bug-investigate`);
+  planning new work (`/change-plan`); whole-codebase audits; style-only passes;
   posting comments, approving, merging or pushing.
 
 ## When to ask
-- No diff, PR reference or file list is available: ask for it.
+- The working tree is clean and no argument was given: ask which commit range or PR to review.
 - The intent of the change is unclear and the verdict depends on it.
 - Memory or documented conventions contradict the code: report both and ask which holds.
 - Running tests or scripts would be needed and the user has not allowed it.
@@ -24,16 +24,19 @@ Find defects the change introduces or exposes, with enough evidence for the auth
 say plainly when no actionable finding is confirmed.
 
 ## Inputs
-- The change (diff, PR, patch or file list) and its stated intent.
-- Surrounding code needed to understand callers, contracts and invariants.
-- Tests touched or relevant to the change; CI results if provided.
+- Arguments: the text typed after the command (Claude Code passes it as `ARGUMENTS: ...`; when
+  invoked automatically or in Codex, use the user's request) names what to review.
+  - With an argument (path, commit range, PR description or diff): review that.
+  - With no argument: review uncommitted changes against HEAD using the read-only
+    `git status` and `git diff HEAD` (these inspections are allowed). If the tree is clean,
+    ask which commit range or PR to review.
+- Surrounding code needed to understand callers, contracts and invariants; tests touched.
 - Project memory (optional): if `.engkit/memory/INDEX.md` exists in the target project, read
   it and open only entries relevant to the changed paths. Verify each against current code
-  before relying on it, and report which entries were used. If absent, proceed normally. Write
-  memory only if the user's task allows it, following the memory-save format.
+  before relying on it, and report which entries were used. If absent, proceed normally.
 
 ## Workflow
-1. Read the full change and write its intent in one sentence.
+1. Resolve the target as described in Inputs and write the change's intent in one sentence.
 2. If memory exists, read INDEX.md and open entries about the changed areas.
 3. Read the code around each changed hunk: callers, contracts and invariants.
 4. Check each hunk in this order: correctness, security, data integrity, concurrency,
@@ -51,7 +54,7 @@ say plainly when no actionable finding is confirmed.
 Fill in this template.
 
 ```
-Intent: <one sentence>   Scope reviewed: <files>
+Intent: <one sentence>   Scope reviewed: <files or range>
 Memory used: <entry - verified | stale | unverifiable> or none
 Findings (highest priority first):
 1. [P?] <title> - <file:line, only if observed>
@@ -62,13 +65,15 @@ Open questions (plausible hypothesis or untested assumption, not findings):
 - <concern> - <label>
 Commands run: <exact command - result> or none
 Commands not run (pending): <command - why>
+Next step: <one suggested command, e.g. /memory-save if a decision was made> or none
 ```
 
 ## Guardrails
 - A finding must rest on a verified fact. Hypotheses go in open questions.
 - No speculative defects, style nitpicks or unrelated refactors.
-- Do not edit files, push, comment on or approve a PR without explicit permission.
-- No production access or destructive actions. A documented command is not permission to run it.
+- Do not edit code or memory, push, comment on or approve a PR without explicit permission.
+- Only read-only git inspection and file reads; no project commands, no production access or
+  destructive actions. A documented command is not permission to run it.
 - Never claim a test passed without observing it.
 - Never reproduce secrets found in the diff; report their presence and location only.
 

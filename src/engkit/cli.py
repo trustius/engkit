@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import sys
 from pathlib import Path
 
@@ -18,7 +19,7 @@ from engkit import (
     validator,
 )
 from engkit.errors import EXIT_FAILURE, EXIT_IO, EXIT_OK, EXIT_USAGE, EngkitError
-from engkit.platforms import TARGET_CHOICES
+from engkit.platforms import PLATFORMS, TARGET_CHOICES, expand_target
 
 EXIT_CODES_HELP = """exit codes:
   0  success (including 'already installed')
@@ -159,8 +160,8 @@ def cmd_doctor(args) -> int:
     return EXIT_FAILURE if report["errors"] else EXIT_OK
 
 
-def cmd_memory_init(args) -> int:
-    root = _project_root(args.project_dir)
+def _init_memory(root: Path) -> None:
+    """Create project memory and print what happened plus the manual CLAUDE.md/AGENTS.md hint."""
     try:
         result = memory.init(root)
     except fsutil.UnsafePathError as exc:
@@ -172,7 +173,68 @@ def cmd_memory_init(args) -> int:
     print("engkit does not edit CLAUDE.md or AGENTS.md. To load memory, add yourself:")
     print(f"  CLAUDE.md: {memory.CLAUDE_SNIPPET.strip()}")
     print(f"  AGENTS.md: {memory.AGENTS_SNIPPET.strip()}")
+
+
+def cmd_memory_init(args) -> int:
+    _init_memory(_project_root(args.project_dir))
     return EXIT_OK
+
+
+def _init_target(requested: str | None) -> str:
+    if requested:
+        return requested
+    found = [name for name in PLATFORMS if shutil.which(expand_target(name)[0].cli)]
+    if not found:
+        raise _usage(
+            "neither claude nor codex was found on PATH; "
+            "pass --target claude|codex|all to choose where to install"
+        )
+    return "all" if len(found) == len(PLATFORMS) else found[0]
+
+
+def _init_summary(results) -> str:
+    counts = {"installed": 0, "already installed": 0, "conflict": 0}
+    other = 0
+    for result in results:
+        if result.status in counts:
+            counts[result.status] += 1
+            continue
+        other += 1
+    summary = (
+        f"installed {counts['installed']}, already installed {counts['already installed']}, "
+        f"conflicts {counts['conflict']}"
+    )
+    return f"{summary}, other {other}" if other else summary
+
+
+def _init_next_lines(target: str) -> list[str]:
+    lines = []
+    if target in ("claude", "all"):
+        lines.append("Next: open Claude Code here and run /engineering-onboard")
+    if target in ("codex", "all"):
+        lines.append("Next: open Codex here and run $engineering-onboard")
+    return lines
+
+
+def cmd_init(args) -> int:
+    target = _init_target(args.target)
+    skills = catalog.discover(catalog.builtin_skills_dir()).skills
+    results = []
+    for skill in skills:
+        results.extend(
+            installer.install(catalog.builtin_skills_dir(), skill.name, target, **_scope(args))
+        )
+    for result in results:
+        print(result.format(), file=sys.stdout if result.exit_code == EXIT_OK else sys.stderr)
+    print(_init_summary(results))
+    exit_code = max((result.exit_code for result in results), default=EXIT_OK)
+    if args.global_:
+        print("memory: skipped (--global)")
+    else:
+        _init_memory(_project_root(args.project_dir))
+    for line in _init_next_lines(target):
+        print(line)
+    return exit_code
 
 
 def cmd_memory_validate(args) -> int:
@@ -276,6 +338,20 @@ def _add_memory(subparsers) -> None:
     validate_parser.set_defaults(func=cmd_memory_validate)
 
 
+def _add_init(subparsers) -> None:
+    parser = subparsers.add_parser(
+        "init",
+        help="install all built-in skills and create project memory (never overwrites)",
+        epilog=EXIT_CODES_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "--target", choices=TARGET_CHOICES, help="default: the CLIs found on PATH (not run)"
+    )
+    _add_project_dir(parser, allow_global=True)
+    parser.set_defaults(func=cmd_init)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = _Parser(
         prog="engkit",
@@ -293,6 +369,7 @@ def build_parser() -> argparse.ArgumentParser:
     _add_uninstall(subparsers)
     _add_doctor(subparsers)
     _add_memory(subparsers)
+    _add_init(subparsers)
     return parser
 
 

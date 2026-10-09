@@ -1,4 +1,5 @@
 import os
+import re
 
 from engkit.validator import validate, validate_name
 from tests.helpers import SKILLS_DIR, TempDirTest, skill_text
@@ -134,6 +135,21 @@ class CanonicalSkillsTest(TempDirTest):
                     self.assertIn(phrase, text)
                 if skill_name != "memory-save":
                     self.assertIn(".engkit/memory/INDEX.md", text)
+
+    def section(self, text, heading):
+        return text.split(f"## {heading}", 1)[1].split("\n## ", 1)[0]
+
+    def test_slash_command_contract_in_every_skill(self):
+        for skill_name in sorted(self.EXPECTED):
+            text = (SKILLS_DIR / skill_name / "SKILL.md").read_text()
+            description = re.search(r"(?m)^description: (.*)$", text).group(1)
+            inputs = " ".join(self.section(text, "Inputs").lower().split())
+            with self.subTest(skill=skill_name):
+                self.assertLessEqual(len(text.splitlines()), 120)
+                self.assertLessEqual(len(description), 1024)
+                self.assertIn("Next step:", self.section(text, "Output contract"))
+                self.assertTrue("no argument" in inputs or "without arguments" in inputs)
+                self.assertNotIn("$ARGUMENTS", text)
 
     def test_skills_are_short_and_free_of_removed_features(self):
         for skill_name in sorted(self.EXPECTED):

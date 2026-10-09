@@ -4,7 +4,7 @@ Synthetic prompts. Run them as described in README.md.
 
 ## Should trigger
 
-1. The checkout test test_apply_discount started failing after yesterday's merge with a KeyError. Find out why.
+1. /bug-investigate The checkout test test_apply_discount started failing after yesterday's merge with a KeyError. Find out why.
 2. Our nightly export job sometimes writes duplicate rows. I can't reproduce it locally. What is going on?
 3. Users report a 500 on /login only on the staging server. Here is the log excerpt. Why?
 4. This function returns None instead of a list when the input is empty and I don't see why. Debug it.
@@ -17,3 +17,8 @@ Synthetic prompts. Run them as described in README.md.
 3. Which web framework and database should we use for a new invoicing tool?
 4. Summarize how this repository is organized and how to run its tests.
 5. Rename the variable total to subtotal across the file.
+
+### Argument cases
+
+- 1. With argument: `/bug-investigate test_apply_discount raises KeyError` -> Investigates that symptom, labels claims, proposes a fix without applying it.
+- 2. Without argument: `/bug-investigate` -> Asks for the symptom (error text, failing test, expected vs actual) before doing anything else.
