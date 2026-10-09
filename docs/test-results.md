@@ -1,5 +1,20 @@
 # Recorded test results
 
+## 2026-10-09: PyPI packaging R1–R3 (engkit 0.1.0, unreleased)
+
+Environment: macOS (Darwin 25.5.0, arm64), Python 3.11.9 venv, PyYAML 6.0.3, setuptools 84.0.0,
+build 1.6.1, twine 7.0.0, ruff 0.16.10, git 2.39.2.
+
+| Command | Result |
+|---|---|
+| `.venv/bin/python -m build` (isolated build env, setuptools fetched from PyPI) | built `engkit-0.1.0.tar.gz` and `engkit-0.1.0-py3-none-any.whl`, no warnings |
+| `.venv/bin/twine check dist/*` | both PASSED |
+| `.venv/bin/python -m unittest tests.test_distribution` | 3 passed: wheel from sdist has all 6 `SKILL.md` and no tests/evals/docs/caches; `engkit --version` equals wheel metadata; installed CLI works from an unrelated directory |
+| `.venv/bin/python -m unittest discover -s tests -t .` | **175 passed** |
+| `.venv/bin/ruff check src tests`, `ruff format --check src tests` | clean |
+
+Not run: CI on GitHub (no push yet), TestPyPI/PyPI upload, `pipx install engkit` on a clean machine.
+
 ## 2026-10-09: enhancement plan P0–P6 (engkit 0.1.0, unreleased)
 
 Environment: macOS (Darwin 25.5.0, arm64), Python 3.10.12 venv, PyYAML 6.0.2, git 2.39.2,
