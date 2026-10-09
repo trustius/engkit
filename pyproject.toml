@@ -1,36 +1,55 @@
 [build-system]
-requires = ["setuptools>=61"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "engkit"
-version = "0.1.0"
-description = "Portable engineering-workflow skills and an offline CLI for Claude Code and Codex."
+dynamic = ["version"]
+description = "Portable engineering-workflow skills and a small CLI to install them for Claude Code and Codex."
 readme = "README.md"
-requires-python = ">=3.10"
-license = {text = "MIT"}
-dependencies = [
-    # Single runtime dependency, used only through yaml.safe_load / safe_dump.
-    "PyYAML>=6.0,<7",
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
+authors = [{ name = "trustius" }]
+keywords = ["claude-code", "codex", "agent-skills", "cli"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Operating System :: POSIX",
+  "Operating System :: MacOS",
+  "Programming Language :: Python :: 3",
+  "Topic :: Software Development",
 ]
+dependencies = ["PyYAML>=6.0,<7"]
+
+[project.optional-dependencies]
+dev = ["ruff==0.16.10", "build==1.6.1", "twine==7.0.0"]
+
+[project.urls]
+Homepage = "https://github.com/trustius/engkit"
+Issues = "https://github.com/trustius/engkit/issues"
+Changelog = "https://github.com/trustius/engkit/blob/main/CHANGELOG.md"
 
 [project.scripts]
 engkit = "engkit.cli:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
-packages = ["engkit"]
+packages = ["engkit", "engkit.skills"]
+
+[tool.setuptools.package-data]
+engkit = ["skills/**/*"]
+
+[tool.setuptools.dynamic]
+version = { attr = "engkit.__version__" }
 
 [tool.pytest.ini_options]
 # Never collect eval fixtures: they are inert synthetic data, not tests.
 testpaths = ["tests"]
 
-[project.optional-dependencies]
-dev = ["ruff==0.16.10"]
-
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+target-version = "py311"
 extend-exclude = ["evals"]
 
 [tool.ruff.lint]

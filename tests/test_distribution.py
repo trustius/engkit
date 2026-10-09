@@ -1,7 +1,7 @@
 """Built-distribution test: wheel installed outside the checkout, run from an unrelated cwd.
 
 Offline: the wheel is built with --no-index --no-build-isolation using the
-interpreter's existing setuptools, and the test venv reuses the interpreter's
+interpreter's existing build and setuptools, and the test venv reuses the interpreter's
 already-installed PyYAML (--system-site-packages). The source copy used for
 the build is deleted before the installed CLI runs. Set ENGKIT_SKIP_DIST=1 to skip.
 """
@@ -14,10 +14,12 @@ import sys
 import unittest
 from pathlib import Path
 
+import yaml
+
 from tests.helpers import REPO, TempDirTest
 
 SKIP = os.environ.get("ENGKIT_SKIP_DIST") == "1"
-BASE_PYTHON = Path(getattr(sys, "_base_executable", sys.executable))
+PYTHON = sys.executable
 
 
 @unittest.skipIf(SKIP, "ENGKIT_SKIP_DIST=1")
@@ -33,6 +35,12 @@ class DistributionTest(TempDirTest):
             self.fail(f"{argv} failed ({proc.returncode}):\n{proc.stdout}\n{proc.stderr}")
         return proc
 
+    def expose_yaml(self, venv):
+        """Make the running interpreter's PyYAML importable offline inside the test venv."""
+        site_packages = next(venv.glob("lib/python*/site-packages"))
+        yaml_parent = Path(yaml.__file__).resolve().parent.parent
+        (site_packages / "host_yaml.pth").write_text(f"{yaml_parent}\n")
+
     def test_wheel_works_without_source_checkout(self):
         src = self.tmp / "src-copy"
         shutil.copytree(
@@ -43,13 +51,16 @@ class DistributionTest(TempDirTest):
             ),
         )
         dist = self.tmp / "dist"
-        # Build via the sdist (as `python -m build` does) so missing sdist content fails here.
-        self.run_cmd([str(BASE_PYTHON), "setup.py", "-q", "sdist", "-d", str(dist)], cwd=src)
+        # Build via the sdist so content missing from the sdist fails here.
+        self.run_cmd(
+            [PYTHON, "-m", "build", "--sdist", "--no-isolation", "--outdir", str(dist), str(src)],
+            cwd=self.tmp,
+        )
         sdist = next(dist.glob("engkit-*.tar.gz"))
         shutil.rmtree(src)  # the source checkout is unavailable from here on
         self.run_cmd(
             [
-                str(BASE_PYTHON),
+                PYTHON,
                 "-m",
                 "pip",
                 "wheel",
@@ -65,9 +76,8 @@ class DistributionTest(TempDirTest):
         wheel = next(dist.glob("engkit-*.whl"))
 
         venv = self.tmp / "venv"
-        self.run_cmd(
-            [str(BASE_PYTHON), "-m", "venv", "--system-site-packages", str(venv)], cwd=self.tmp
-        )
+        self.run_cmd([PYTHON, "-m", "venv", "--system-site-packages", str(venv)], cwd=self.tmp)
+        self.expose_yaml(venv)
         self.run_cmd(
             [
                 str(venv / "bin" / "python"),
@@ -114,6 +124,6 @@ class DistributionTest(TempDirTest):
             ).stdout
         )
         env_lines = " ".join(i["message"] for i in doctor["sections"][0]["items"])
-        self.assertIn("resources: bundled", env_lines)
-        self.assertIn(str(venv), env_lines)
+        self.assertIn("skills: ", env_lines)
+        self.assertIn(str(venv / "lib"), env_lines)
         self.assertNotIn(str(REPO), env_lines)

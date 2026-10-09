@@ -24,9 +24,9 @@ ENGKIT_SKIP_DIST=1 .venv/bin/python -m unittest discover -s tests -t .   # skip 
 
 Layout: `src/engkit/` contains `cli` (argument parsing and output only),
 `catalog`, `validator`, `platforms` (the only place that maps platform and scope
-to paths), `installer`, `sources`, `lockfile`, `memory`, `fsutil`, `resources`,
-`doctor` and `errors`. The only packaged resources are `skills/`, copied into
-the built package by `setup.py`. Design decisions are in `docs/adr/`. Pytest
+to paths), `installer`, `sources`, `lockfile`, `memory`, `fsutil`,
+`doctor` and `errors`. The only packaged resources are `src/engkit/skills/`,
+installed as setuptools package data (`pyproject.toml`). Design decisions are in `docs/adr/`. Pytest
 also works and is limited to `tests/` by `pyproject.toml`.
 
 Commands:
@@ -49,13 +49,13 @@ their results, any unresolved risks, and the next tasks.
 
 engkit is a portable library of engineering-workflow skills (`SKILL.md`) plus a
 small local CLI for **Claude Code and OpenAI Codex**. It installs skills from
-the built-in `skills/` directory or from a git source, keeps a lockfile, and
+the built-in `src/engkit/skills/` directory or from a git source, keeps a lockfile, and
 manages a local, platform-neutral project memory. It is not an agent runtime,
 an MCP integration or an LLM client.
 
 Concerns that stay separate:
 
-1. **Skills** (`skills/<name>/SKILL.md`): stack-neutral workflows. Built-in
+1. **Skills** (`src/engkit/skills/<name>/SKILL.md`): stack-neutral workflows. Built-in
    skills: `systematic-debugging`, `change-review`, `implementation-planning`,
    `project-discovery`, `stack-selection`, `project-memory`.
 2. **Platform adapters** (`platforms.py`): the only place that maps
@@ -75,8 +75,8 @@ difference in `docs/compatibility.md`):
 
 ## Invariants (must not be violated)
 
-- **Single canonical source:** `skills/<name>/` is authoritative. Never commit per-platform copies. Keep platform-specific behavior in `platforms.py` only.
-- **Skill names** use lower-case ASCII letters, digits and hyphens, must equal the directory name, and must not collide with a platform built-in skill name (`BUILTIN_SKILL_NAMES` in `platforms.py`). Reject traversal, absolute paths, and symlinks that escape the toolkit root.
+- **Single canonical source:** `src/engkit/skills/<name>/` is authoritative. Never commit per-platform copies. Keep platform-specific behavior in `platforms.py` only.
+- **Skill names** use lower-case ASCII letters, digits and hyphens, must equal the directory name, and must not collide with a platform built-in skill name (`BUILTIN_SKILL_NAMES` in `platforms.py`). Reject traversal, absolute paths, and symlinks that escape the skills directory.
 - **Install is copy-based, staged and atomic:** copy to a temp sibling, validate, then publish with the no-replace contract in ADR 0002. A preflight check followed by an unconditional rename is insufficient. An identical destination reports `already installed`; a differing one reports `conflict` (exit 3) and is left untouched. Reject symlinked managed destination parents and clean only operation-owned staging.
 - **Never overwrite or delete a modified install.** `update` and `uninstall` act only on lock-managed installs whose content hash equals the lock. A modified install is a conflict and is not touched.
 - **Remote installs need a preview and `--yes`.** Without `--yes`, `install --source` prints the URL, ref, resolved commit, file list and executable files and writes nothing. `update` of a git-sourced entry shows old→new commit and needs `--yes`. Pin `--ref <commit>` to guarantee the previewed content.

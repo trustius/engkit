@@ -45,7 +45,7 @@ Tests per module:
 | test_cli | 12 | help, version, invalid args (exit 2), list/validate (incl. failure paths), install default cwd/conflict/global (temp HOME), project workflow end to end, stack validate registry context, read-only doctor, incomplete transaction error, CLAUDE.md/AGENTS.md unchanged |
 | test_schemas | 3 | JSON Schema documents match the validator constants |
 | test_evals | 4 | ≥10 cases, ≥2 per skill, required sections, status table only pass/fail/not-run, no executable fixtures |
-| test_distribution | 1 | wheel built from a deleted source copy, installed into a fresh venv; `list`, `validate`, `install --target all`, `project generate` with a project-local pack and `doctor` from an unrelated cwd; resources reported as bundled under the venv |
+| test_distribution | 1 | wheel built from a deleted source copy, installed into a fresh venv; `list`, `validate`, `install --target all`, `project generate` with a project-local pack and `doctor` from an unrelated cwd; skills directory reported under the venv's site-packages |
 
 Not covered by automation, and pending: agent-level discovery, invocation and
 context consumption on Claude Code and Codex (`manual-smoke-tests.md`), and

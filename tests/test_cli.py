@@ -37,11 +37,11 @@ class CliTest(TempDirTest):
         self.assertEqual(run_cli(["validate", "change-review"])[0], EXIT_OK)
 
     def test_validate_failure_reports_path(self):
-        root = self.make_toolkit({"broken": "---\nname: [\n---\n", "fine": skill_text("fine")})
+        root = self.make_skills_dir({"broken": "---\nname: [\n---\n", "fine": skill_text("fine")})
         with resources_at(root):
             code, _, err = run_cli(["validate"])
             self.assertEqual(code, EXIT_FAILURE)
-            self.assertIn(str(root / "skills" / "broken" / "SKILL.md"), err)
+            self.assertIn(str(root / "broken" / "SKILL.md"), err)
             self.assertIn("malformed YAML", err)
             self.assertEqual(run_cli(["validate", "fine"])[0], EXIT_OK)
 

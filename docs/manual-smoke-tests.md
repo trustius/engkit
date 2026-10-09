@@ -28,7 +28,7 @@ Build a synthetic source repository. It is a local file, so no network is used.
 
 ```bash
 mkdir -p /tmp/engkit-smoke/source/skills && cd /tmp/engkit-smoke/source
-cp -R /absolute/path/to/engkit/skills/change-review skills/
+cp -R /absolute/path/to/engkit/src/engkit/skills/change-review skills/
 git init -q && git add -A && git -c user.email=smoke@example.test -c user.name=smoke commit -qm "baseline"
 
 mkdir -p /tmp/engkit-smoke/codex && cd /tmp/engkit-smoke/codex && git init -q

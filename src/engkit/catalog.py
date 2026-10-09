@@ -123,13 +123,13 @@ def _reject_duplicates(result: CatalogResult) -> None:
     result.skills = [skill for skill in result.skills if skill.name not in duplicates]
 
 
-def discover(root: Path) -> CatalogResult:
-    """Deterministically enumerate ``root/skills/*/SKILL.md``; duplicate names are all excluded."""
-    return discover_dir(root / "skills")
+def builtin_skills_dir() -> Path:
+    """The skills directory packaged with engkit; never depends on the working directory."""
+    return Path(__file__).resolve().parent / "skills"
 
 
-def discover_dir(base: Path) -> CatalogResult:
-    """Enumerate ``base/*/SKILL.md`` for any skills directory, such as one in a git checkout."""
+def discover(base: Path) -> CatalogResult:
+    """Enumerate ``base/*/SKILL.md``; skills with a duplicate name are all excluded."""
     result = CatalogResult()
     if not base.is_dir():
         result.issues.append(Issue(base, "skills directory not found"))

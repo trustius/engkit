@@ -159,9 +159,9 @@ class PrintableTest(TempDirTest):
         self.assertEqual(fsutil.printable("plain text"), "plain text")
 
     def test_validator_rejects_control_characters_in_names(self):
-        toolkit = self.make_toolkit({"demo": skill_text("demo")})
+        toolkit = self.make_skills_dir({"demo": skill_text("demo")})
         for bad in ("a\nb", "x\x1b[2Kz"):
-            path = toolkit / "skills/demo" / bad
+            path = toolkit / "demo" / bad
             path.write_text("x")
             result = validator.validate(toolkit, "demo")
             self.assertTrue(
@@ -204,9 +204,9 @@ class FetchedOutputTest(TempDirTest):
 
 class SizeLimitTest(TempDirTest):
     def validate_with(self, files: dict[str, int]):
-        toolkit = self.make_toolkit({"demo": skill_text("demo")})
+        toolkit = self.make_skills_dir({"demo": skill_text("demo")})
         for name, size in files.items():
-            path = toolkit / "skills/demo" / name
+            path = toolkit / "demo" / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(b"x" * size)
         return [issue.message for issue in validator.validate(toolkit, "demo").issues]
@@ -231,7 +231,7 @@ class SizeLimitTest(TempDirTest):
         self.assertTrue([m for m in messages if "larger than 10 MiB in total" in m])
 
     def test_oversized_skill_md_is_not_read(self):
-        toolkit = self.make_toolkit({"demo": skill_text("demo") + "x" * (MIB + 1)})
+        toolkit = self.make_skills_dir({"demo": skill_text("demo") + "x" * (MIB + 1)})
         result = catalog.discover(toolkit)
         self.assertEqual(result.skills, [])
         self.assertIn("larger than 1 MiB", result.issues[0].message)
@@ -253,7 +253,7 @@ class SizeLimitTest(TempDirTest):
 class LifecycleFixesTest(TempDirTest):
     def setUp(self):
         super().setUp()
-        self.toolkit = self.make_toolkit({"demo": skill_text("demo")})
+        self.toolkit = self.make_skills_dir({"demo": skill_text("demo")})
         self.project = self.make_project()
         self.dest = self.project / ".claude/skills/demo"
         self.staging = self.project / ".engkit/staging"
@@ -269,7 +269,7 @@ class LifecycleFixesTest(TempDirTest):
         return installer.uninstall("demo", target, project_dir=self.project)
 
     def change_upstream(self):
-        (self.toolkit / "skills/demo/extra.md").write_text("new\n")
+        (self.toolkit / "demo/extra.md").write_text("new\n")
 
     def hook(self, actions: dict):
         def run(stage, path):
@@ -427,7 +427,7 @@ class LifecycleFixesTest(TempDirTest):
         self.assertFalse((self.project / ".claude").exists())
 
     def test_identical_unmanaged_destination_is_adopted_into_the_lock(self):
-        fsutil.copy_tree_regular(self.toolkit / "skills/demo", self.dest_made())
+        fsutil.copy_tree_regular(self.toolkit / "demo", self.dest_made())
         result = self.install()[0]
         self.assertEqual(result.status, "already installed")
         self.assertEqual(lockfile.read(self.project)["demo"]["targets"], ["claude"])
@@ -438,7 +438,7 @@ class LifecycleFixesTest(TempDirTest):
 
     def test_validation_failure_reports_only_managed_targets(self):
         self.install("claude")
-        (self.toolkit / "skills/demo/SKILL.md").write_text("broken")
+        (self.toolkit / "demo/SKILL.md").write_text("broken")
         results = self.update("all")
         self.assertEqual([(r.platform, r.status) for r in results], [("claude", "error")])
 
@@ -478,7 +478,7 @@ class UrlHandlingTest(TempDirTest):
 
     def test_update_reports_a_malformed_locked_source_and_continues(self):
         project = self.make_project()
-        toolkit = self.make_toolkit({"demo": skill_text("demo"), "aaa": skill_text("aaa")})
+        toolkit = self.make_skills_dir({"demo": skill_text("demo"), "aaa": skill_text("aaa")})
         installer.install(toolkit, "demo", "claude", project_dir=project)
         installer.install(toolkit, "aaa", "claude", project_dir=project)
         with lockfile.transaction(project) as skills:

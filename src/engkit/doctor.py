@@ -11,7 +11,6 @@ from pathlib import Path
 from engkit import __version__, installer, memory, platforms
 from engkit.catalog import Skill, discover
 from engkit.fsutil import check_no_symlinks
-from engkit.resources import resource_origin
 
 STATUS_LEVELS = {
     "identical": "info",
@@ -41,15 +40,15 @@ class Report:
 
 
 def run(
-    resource_root: Path,
+    skills_dir: Path,
     target: str,
     project_root: Path,
     home: Path | None,
     check_global: bool = True,
 ) -> dict:
     report = Report()
-    report.add_section("Environment", _environment_items(resource_root, project_root))
-    catalog = discover(resource_root)
+    report.add_section("Environment", _environment_items(skills_dir, project_root))
+    catalog = discover(skills_dir)
     errors = [issue for issue in catalog.issues if issue.level == "error"]
     catalog_items = [("error", issue.format()) for issue in errors]
     names = ", ".join(skill.name for skill in catalog.skills)
@@ -73,11 +72,11 @@ def run(
     return report.data
 
 
-def _environment_items(resource_root: Path, project_root: Path) -> list[tuple[str, str]]:
+def _environment_items(skills_dir: Path, project_root: Path) -> list[tuple[str, str]]:
     python_version = python_platform.python_version()
     return [
         ("info", f"engkit {__version__} on Python {python_version} ({sys.platform})"),
-        ("info", f"resources: {resource_origin(resource_root)} ({resource_root})"),
+        ("info", f"skills: {skills_dir}"),
         ("info", f"project root: {project_root}"),
     ]
 

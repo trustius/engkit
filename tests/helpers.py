@@ -5,7 +5,6 @@ from __future__ import annotations
 import contextlib
 import io
 import os
-import shutil
 import subprocess
 import tempfile
 import unittest
@@ -13,6 +12,7 @@ from pathlib import Path
 from unittest import mock
 
 REPO = Path(__file__).resolve().parent.parent
+SKILLS_DIR = REPO / "src" / "engkit" / "skills"
 
 SKILL_BODY = """
 # {name}
@@ -73,20 +73,14 @@ class TempDirTest(unittest.TestCase):
                     os.chmod(p, 0o755)
         self._tmp.cleanup()
 
-    def make_toolkit(
-        self, skills: dict[str, str] | None = None, copy_real: bool = False, name: str = "toolkit"
-    ) -> Path:
-        """A toolkit root containing skills/."""
+    def make_skills_dir(self, skills: dict[str, str] | None = None, name: str = "toolkit") -> Path:
+        """A temporary skills directory holding the given skills."""
         root = self.tmp / name
         root.mkdir()
-        if copy_real:
-            shutil.copytree(REPO / "skills", root / "skills")
-        else:
-            (root / "skills").mkdir()
-        for name, text in (skills or {}).items():
-            d = root / "skills" / name
-            d.mkdir(parents=True, exist_ok=True)
-            (d / "SKILL.md").write_text(text)
+        for skill_name, text in (skills or {}).items():
+            skill_dir = root / skill_name
+            skill_dir.mkdir(parents=True, exist_ok=True)
+            (skill_dir / "SKILL.md").write_text(text)
         return root
 
     def make_project(self, name: str = "project", files: dict[str, str] | None = None) -> Path:
@@ -161,7 +155,7 @@ def run_cli(argv: list[str], cwd: Path | None = None) -> tuple[int, str, str]:
 
 @contextlib.contextmanager
 def resources_at(root: Path):
-    with mock.patch("engkit.resources.resource_root", return_value=root):
+    with mock.patch("engkit.catalog.builtin_skills_dir", return_value=root):
         yield
 
 

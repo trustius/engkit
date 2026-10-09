@@ -14,7 +14,6 @@ from engkit import (
     fsutil,
     installer,
     memory,
-    resources,
     sources,
     validator,
 )
@@ -38,13 +37,6 @@ def _project_root(value: str | None) -> Path:
         raise EngkitError(
             f"project directory unusable: {value or 'cwd'} ({exc})", EXIT_IO
         ) from None
-
-
-def _resources() -> Path:
-    try:
-        return resources.resource_root()
-    except resources.ResourceError as exc:
-        raise EngkitError(str(exc), EXIT_IO) from None
 
 
 def _usage(message: str) -> EngkitError:
@@ -72,11 +64,11 @@ def _print_issues(issues, label: str) -> int:
 def cmd_list(args) -> int:
     if args.source:
         with sources.fetch(args.source, args.ref, args.path) as fetched:
-            result = catalog.discover_dir(sources.skills_dir(fetched.root, args.path))
+            result = catalog.discover(sources.skills_dir(fetched.root, args.path))
     elif args.ref or args.path:
         raise _usage("--ref and --path require --source")
     else:
-        result = catalog.discover(_resources())
+        result = catalog.discover(catalog.builtin_skills_dir())
     if args.json:
         skills = [{"name": skill.name, "description": skill.description} for skill in result.skills]
         issues = [issue.format() for issue in result.issues]
@@ -91,7 +83,7 @@ def cmd_list(args) -> int:
 
 
 def cmd_validate(args) -> int:
-    result = validator.validate(_resources(), args.name)
+    result = validator.validate(catalog.builtin_skills_dir(), args.name)
     if _print_issues(result.issues, "validation"):
         return EXIT_FAILURE
     print(f"ok: {len(result.skills)} skill(s) valid")
@@ -119,7 +111,9 @@ def cmd_install(args) -> int:
         if not args.name:
             raise _usage("give a built-in NAME, or use --source with --skill")
         name = _checked_name(args.name)
-        return _report(installer.install(_resources(), name, args.target, **_scope(args)))
+        return _report(
+            installer.install(catalog.builtin_skills_dir(), name, args.target, **_scope(args))
+        )
     if args.name or not args.skill:
         raise _usage("--source needs at least one --skill and no positional NAME")
     names = [_checked_name(name) for name in dict.fromkeys(args.skill)]
@@ -132,7 +126,9 @@ def cmd_install(args) -> int:
 
 def cmd_update(args) -> int:
     names = [_checked_name(args.name)] if args.name else []
-    results = installer.update(_resources(), names, args.target, yes=args.yes, **_scope(args))
+    results = installer.update(
+        catalog.builtin_skills_dir(), names, args.target, yes=args.yes, **_scope(args)
+    )
     if not results:
         print("nothing to update: no skills in the lock")
     return _report(results)
@@ -145,7 +141,7 @@ def cmd_uninstall(args) -> int:
 
 def cmd_doctor(args) -> int:
     report = doctor.run(
-        _resources(),
+        catalog.builtin_skills_dir(),
         args.target,
         _project_root(args.project_dir),
         doctor.home_dir(),

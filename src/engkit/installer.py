@@ -92,7 +92,7 @@ class _UpdateRun:
     root: Path
     scope: str
     target: str
-    resources: Path
+    skills_dir: Path
     stack: contextlib.ExitStack
     cache: dict
     yes: bool
@@ -138,9 +138,9 @@ def _validated(base: Path, containment: Path, name: str, label: str):
         return None, {}, str(exc)
 
 
-def install(toolkit_root: Path, name: str, target: str, **options) -> list[InstallResult]:
-    """Install one built-in skill from ``toolkit_root/skills``."""
-    return install_dir(toolkit_root / "skills", toolkit_root, name, target, **options)
+def install(skills_dir: Path, name: str, target: str, **options) -> list[InstallResult]:
+    """Install one skill from a skills directory (the built-in one in normal use)."""
+    return install_dir(skills_dir, skills_dir, name, target, **options)
 
 
 def install_dir(
@@ -555,7 +555,7 @@ def _stamp_commit(results: list[InstallResult], commit: str) -> list[InstallResu
 def _new_source(entry: dict, run: _UpdateRun):
     """Return (skills dir, containment root, commit) of the entry's current upstream."""
     if entry["source"] == "builtin":
-        return run.resources / "skills", run.resources, None
+        return run.skills_dir, run.skills_dir, None
     key = (entry["source"], entry["ref"], entry["path"])
     if key not in run.cache:
         run.cache[key] = run.stack.enter_context(sources.fetch(*key))
@@ -627,7 +627,7 @@ def _apply_updates(run: _UpdateRun, job: _Job, managed: list[str], commit) -> li
 
 
 def update(
-    resources: Path,
+    skills_dir: Path,
     names: list[str],
     target: str = "all",
     *,
@@ -642,7 +642,7 @@ def update(
     selected = names or sorted(lockfile.read(root))
     results = []
     with contextlib.ExitStack() as stack:
-        run = _UpdateRun(root, scope, target, resources, stack, {}, yes, allow_native_noreplace)
+        run = _UpdateRun(root, scope, target, skills_dir, stack, {}, yes, allow_native_noreplace)
         for name in selected:
             results += _update_name_reporting(run, name)
     return results

@@ -1,6 +1,6 @@
 # Authoring skills
 
-Canonical skills live in `skills/<name>/`. That directory is the only source;
+Canonical skills live in `src/engkit/skills/<name>/`. That directory is the only source;
 never commit per-platform copies. Platform differences belong in
 `src/engkit/platforms.py`.
 

@@ -6,7 +6,7 @@ from tests.helpers import TempDirTest, skill_text
 
 class CatalogTest(TempDirTest):
     def test_deterministic_order_and_descriptions(self):
-        root = self.make_toolkit(
+        root = self.make_skills_dir(
             {n: skill_text(n, f"Desc {n}.") for n in ("zeta", "alpha", "mid-one")}
         )
         first = discover(root)
@@ -17,41 +17,41 @@ class CatalogTest(TempDirTest):
         self.assertTrue(first.ok)
 
     def test_empty_directory(self):
-        result = discover(self.make_toolkit())
+        result = discover(self.make_skills_dir())
         self.assertEqual(result.skills, [])
         self.assertTrue(result.ok)
 
     def test_missing_skills_directory(self):
-        result = discover(self.tmp)
+        result = discover(self.tmp / "absent")
         self.assertFalse(result.ok)
         self.assertIn("skills directory not found", result.issues[0].message)
 
     def test_hidden_entries_and_files_ignored(self):
-        root = self.make_toolkit({"good": skill_text("good")})
-        (root / "skills" / ".hidden").mkdir()
-        (root / "skills" / "README.md").write_text("x")
+        root = self.make_skills_dir({"good": skill_text("good")})
+        (root / ".hidden").mkdir()
+        (root / "README.md").write_text("x")
         result = discover(root)
         self.assertEqual([s.name for s in result.skills], ["good"])
         self.assertTrue(result.ok)
 
     def test_missing_skill_md(self):
-        root = self.make_toolkit()
-        (root / "skills" / "empty").mkdir()
+        root = self.make_skills_dir()
+        (root / "empty").mkdir()
         result = discover(root)
         self.assertFalse(result.ok)
         self.assertIn("missing SKILL.md", result.issues[0].format())
-        self.assertIn(str(root / "skills" / "empty" / "SKILL.md"), result.issues[0].format())
+        self.assertIn(str(root / "empty" / "SKILL.md"), result.issues[0].format())
 
     def test_duplicate_names_rejected(self):
-        root = self.make_toolkit({"one": skill_text("same"), "two": skill_text("same")})
+        root = self.make_skills_dir({"one": skill_text("same"), "two": skill_text("same")})
         result = discover(root)
         self.assertFalse(result.ok)
         self.assertEqual(result.skills, [])
         self.assertEqual(len([i for i in result.issues if "duplicate skill name" in i.message]), 2)
 
     def test_symlinked_skill_dir_rejected(self):
-        root = self.make_toolkit({"real": skill_text("real")})
-        os.symlink(root / "skills" / "real", root / "skills" / "alias")
+        root = self.make_skills_dir({"real": skill_text("real")})
+        os.symlink(root / "real", root / "alias")
         result = discover(root)
         self.assertFalse(result.ok)
         self.assertTrue(any("symlink" in i.message for i in result.issues))

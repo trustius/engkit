@@ -12,10 +12,10 @@ from tests.helpers import TempDirTest, skill_text, snapshot
 class InstallerTest(TempDirTest):
     def setUp(self):
         super().setUp()
-        self.toolkit = self.make_toolkit(
+        self.toolkit = self.make_skills_dir(
             {"demo": skill_text("demo", extra="\n[r](references/deep/notes.md)\n")}
         )
-        skill = self.toolkit / "skills" / "demo"
+        skill = self.toolkit / "demo"
         (skill / "references" / "deep").mkdir(parents=True)
         (skill / "references" / "deep" / "notes.md").write_text("nested reference\n")
         (skill / "scripts").mkdir()
@@ -30,9 +30,7 @@ class InstallerTest(TempDirTest):
         return installer.install(self.toolkit, "demo", target, **kw)
 
     def assert_copy(self, dest: Path):
-        self.assertEqual(
-            fsutil.tree_snapshot(dest), fsutil.tree_snapshot(self.toolkit / "skills" / "demo")
-        )
+        self.assertEqual(fsutil.tree_snapshot(dest), fsutil.tree_snapshot(self.toolkit / "demo"))
 
     def test_project_install_both_targets_copies_nested_files(self):
         results = self.install("all")
@@ -80,7 +78,7 @@ class InstallerTest(TempDirTest):
         self.assertEqual([r.status for r in results], ["installed", "conflict"])
 
     def test_invalid_source_installs_nothing(self):
-        (self.toolkit / "skills" / "demo" / "SKILL.md").write_text("broken")
+        (self.toolkit / "demo" / "SKILL.md").write_text("broken")
         result = self.install()[0]
         self.assertEqual(result.status, "error")
         self.assertFalse((self.project / ".claude").exists())
@@ -126,7 +124,7 @@ class InstallerTest(TempDirTest):
 
     def test_symlinked_destination_is_conflict(self):
         (self.project / ".claude/skills").mkdir(parents=True)
-        os.symlink(self.toolkit / "skills" / "demo", self.project / ".claude/skills/demo")
+        os.symlink(self.toolkit / "demo", self.project / ".claude/skills/demo")
         result = self.install()[0]
         self.assertEqual(result.status, "conflict")
         self.assertTrue((self.project / ".claude/skills/demo").is_symlink())
@@ -150,7 +148,7 @@ class InstallerTest(TempDirTest):
                 )
 
     def test_identical_destination_appearing_before_publication(self):
-        source = self.toolkit / "skills" / "demo"
+        source = self.toolkit / "demo"
 
         def race(stage, target):
             if stage == "before_publish":
@@ -215,7 +213,7 @@ class InstallerTest(TempDirTest):
                 self.assertEqual(os.listdir(project / ".claude/skills"), ["demo"])
 
     def test_concurrent_differing_installs(self):
-        other = self.make_toolkit(
+        other = self.make_skills_dir(
             {"demo": skill_text("demo", "A different description.")}, name="toolkit2"
         )
         for native in (True, False):
@@ -232,11 +230,11 @@ class InstallerTest(TempDirTest):
                 ][0]
                 self.assertEqual(
                     fsutil.tree_snapshot(project / ".claude/skills/demo"),
-                    fsutil.tree_snapshot(winner / "skills" / "demo"),
+                    fsutil.tree_snapshot(winner / "demo"),
                 )
 
     def test_status_of(self):
-        source = self.toolkit / "skills" / "demo"
+        source = self.toolkit / "demo"
         dest = self.project / ".claude/skills/demo"
         self.assertEqual(installer.status_of(source, dest), "missing")
         self.install()
@@ -245,7 +243,7 @@ class InstallerTest(TempDirTest):
         self.assertEqual(installer.status_of(source, dest), "differs")
 
     def test_tree_snapshot_propagates_unreadable_directory(self):
-        source = self.toolkit / "skills" / "demo"
+        source = self.toolkit / "demo"
         locked = source / "references" / "deep"
         os.chmod(locked, 0o000)
         self.addCleanup(os.chmod, locked, 0o755)
@@ -264,7 +262,7 @@ class InstallerTest(TempDirTest):
         self.assertIn("unsafe destination", result.detail)
 
     def test_status_of_unreadable_destination_is_unsafe(self):
-        source = self.toolkit / "skills" / "demo"
+        source = self.toolkit / "demo"
         dest = self.project / ".claude/skills/demo"
         self.install()
         os.chmod(dest, 0o000)
@@ -277,7 +275,7 @@ class LockedLifecycleTest(TempDirTest):
 
     def setUp(self):
         super().setUp()
-        self.toolkit = self.make_toolkit({"demo": skill_text("demo")})
+        self.toolkit = self.make_skills_dir({"demo": skill_text("demo")})
         self.project = self.make_project()
         self.dest = self.project / ".claude/skills/demo"
 
@@ -294,11 +292,11 @@ class LockedLifecycleTest(TempDirTest):
         return lockfile.read(self.project)
 
     def change_canonical(self, text="changed\n"):
-        (self.toolkit / "skills/demo/SKILL.md").write_text(skill_text("demo", "New text."))
-        (self.toolkit / "skills/demo/extra.md").write_text(text)
-        (self.toolkit / "skills/demo/scripts").mkdir(exist_ok=True)
+        (self.toolkit / "demo/SKILL.md").write_text(skill_text("demo", "New text."))
+        (self.toolkit / "demo/extra.md").write_text(text)
+        (self.toolkit / "demo/scripts").mkdir(exist_ok=True)
         marker = self.tmp / "EXECUTED"
-        script = self.toolkit / "skills/demo/scripts/run.sh"
+        script = self.toolkit / "demo/scripts/run.sh"
         script.write_text(f"#!/bin/sh\ntouch {marker}\n")
         os.chmod(script, 0o755)
         return marker
@@ -333,7 +331,7 @@ class LockedLifecycleTest(TempDirTest):
         for sub in (".claude/skills/demo", ".agents/skills/demo"):
             self.assertEqual(
                 fsutil.tree_snapshot(self.project / sub),
-                fsutil.tree_snapshot(self.toolkit / "skills/demo"),
+                fsutil.tree_snapshot(self.toolkit / "demo"),
             )
         expected = lockfile.digest(fsutil.tree_snapshot(self.dest))
         self.assertEqual(self.lock()["demo"]["content_sha256"], expected)

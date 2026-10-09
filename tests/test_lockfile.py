@@ -126,7 +126,7 @@ class LockfileTest(TempDirTest):
         self.assertEqual(len(lockfile.read(self.root)), 8)
 
     def test_corrupt_lock_blocks_install_without_changes(self):
-        toolkit = self.make_toolkit({"demo": skill_text("demo")})
+        toolkit = self.make_skills_dir({"demo": skill_text("demo")})
         self.path.parent.mkdir()
         self.path.write_text("garbage")
         before = snapshot(self.root)

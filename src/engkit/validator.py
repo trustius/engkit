@@ -15,7 +15,7 @@ from engkit.catalog import (
     CatalogResult,
     Issue,
     Skill,
-    discover_dir,
+    discover,
 )
 from engkit.platforms import builtin_collisions
 
@@ -104,13 +104,13 @@ def _check_length(skill: Skill) -> list[Issue]:
     return [Issue(skill.skill_md, message)]
 
 
-def validate_skill(skill: Skill, toolkit_root: Path) -> list[Issue]:
+def validate_skill(skill: Skill, containment_root: Path) -> list[Issue]:
     issues = _check_names(skill)
     issues.extend(_check_metadata(skill))
     issues.extend(_check_sections(skill))
     issues.extend(_check_length(skill))
     issues.extend(_check_links(skill))
-    issues.extend(_check_tree(skill.path, toolkit_root))
+    issues.extend(_check_tree(skill.path, containment_root))
     return issues
 
 
@@ -137,7 +137,7 @@ def _check_links(skill: Skill) -> list[Issue]:
     return issues
 
 
-def _check_entry(path: Path, toolkit_root: Path, skill_root: Path) -> list[Issue]:
+def _check_entry(path: Path, containment_root: Path, skill_root: Path) -> list[Issue]:
     issues = []
     if fsutil.printable(path.name) != path.name:
         issues.append(Issue(path, "file or directory name contains control characters"))
@@ -147,8 +147,8 @@ def _check_entry(path: Path, toolkit_root: Path, skill_root: Path) -> list[Issue
         return issues
     target = Path(os.path.realpath(path))
     link = os.readlink(path)
-    if not target.is_relative_to(toolkit_root):
-        issues.append(Issue(path, f"symlink escapes toolkit root (-> {link})"))
+    if not target.is_relative_to(containment_root):
+        issues.append(Issue(path, f"symlink escapes the skills directory (-> {link})"))
     elif not target.is_relative_to(skill_root):
         issues.append(Issue(path, f"symlink escapes the skill directory (-> {link})"))
     else:
@@ -177,10 +177,10 @@ def _regular_size(path: Path) -> int:
     return -1
 
 
-def _check_tree(skill_dir: Path, toolkit_root: Path) -> list[Issue]:
+def _check_tree(skill_dir: Path, containment_root: Path) -> list[Issue]:
     issues = []
     sizes = []
-    root = toolkit_root.resolve()
+    root = containment_root.resolve()
     skill_root = skill_dir.resolve()
     try:
         for _, path in fsutil.entries(skill_dir):
@@ -191,16 +191,16 @@ def _check_tree(skill_dir: Path, toolkit_root: Path) -> list[Issue]:
     return issues + _check_sizes(skill_dir, sizes)
 
 
-def validate(toolkit_root: Path, name: str | None = None) -> CatalogResult:
-    """Validate all skills (or one); issues include catalog problems."""
-    return validate_dir(toolkit_root / "skills", toolkit_root, name)
+def validate(skills_dir: Path, name: str | None = None) -> CatalogResult:
+    """Validate all skills (or one); symlinks may not leave ``skills_dir``."""
+    return validate_dir(skills_dir, skills_dir, name)
 
 
 def validate_dir(
     skills_dir: Path, containment_root: Path, name: str | None = None
 ) -> CatalogResult:
     """Validate skills under ``skills_dir``; symlinks must stay inside ``containment_root``."""
-    catalog = discover_dir(skills_dir)
+    catalog = discover(skills_dir)
     if name is None:
         selected = catalog.skills
         catalog_issues = list(catalog.issues)
