@@ -1,0 +1,7 @@
+2026-10-08T09:14:01Z INFO  worker started pool=4
+2026-10-08T09:14:07Z INFO  sync job 118 begin account=owner@example.test
+2026-10-08T09:14:08Z ERROR sync job 118 failed: 401 Unauthorized from https://api.example.test/v1/items
+2026-10-08T09:14:08Z DEBUG request headers: Authorization: Bearer EXAMPLE-NOT-A-REAL-KEY-0000 user=owner@example.test
+2026-10-08T09:14:09Z WARN  retry 1/3 for job 118 in 5s
+2026-10-08T09:14:14Z ERROR sync job 118 failed: 401 Unauthorized from https://api.example.test/v1/items
+2026-10-08T09:14:14Z INFO  job 118 marked failed

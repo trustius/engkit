@@ -31,6 +31,15 @@ class EvalStructureTest(unittest.TestCase):
         for d in SKILL_DIRS:
             self.assertGreaterEqual(len([c for c in cases if c.parent.name == d]), 2, d)
 
+    def test_rules_area_has_four_cases_naming_their_command(self):
+        cases = [c for c in self.cases() if c.parent.name == "rules"]
+        self.assertGreaterEqual(len(cases), 4)
+        for case in cases:
+            text = (case / "case.md").read_text()
+            prompt = text.split("## Prompt", 1)[1].split("\n## ", 1)[0]
+            with self.subTest(case=case.name):
+                self.assertRegex(prompt, r"/(bug-investigate|change-plan|change-review)")
+
     def test_case_sections(self):
         for case in self.cases():
             text = (case / "case.md").read_text()

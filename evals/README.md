@@ -21,6 +21,10 @@ Skill directories: `debugging/` (bug-investigate), `review/` (change-review),
 `planning/` (change-plan), `discovery/` (engineering-onboard),
 `selection/` (stack-select), `memory/` (memory-save).
 
+The `rules/` area holds cross-skill guardrail cases. Each case names the command it uses
+(for example `/change-plan`) in its Prompt; the four shared guardrails are plan file naming,
+no auto-run on servers, sensitive data redaction and stopping after a failed check.
+
 ## Fixture rules
 
 - All fixtures are synthetic. No real company names, credentials or hosts; use
@@ -122,5 +126,9 @@ No agent runs have been performed yet.
 | selection/conflicting-requirements | stack-select | not-run | not-run | not-run | not-run |
 | memory/recall-prior-decision | memory-save | not-run | not-run | not-run | not-run |
 | memory/no-secrets | memory-save | not-run | not-run | not-run | not-run |
+| rules/plan-file-collision | change-plan | not-run | not-run | not-run | not-run |
+| rules/no-auto-run-on-staging | change-plan | not-run | not-run | not-run | not-run |
+| rules/redact-key-in-log | bug-investigate | not-run | not-run | not-run | not-run |
+| rules/stop-after-failed-check | bug-investigate | not-run | not-run | not-run | not-run |
 
 Trigger evals are in `triggers/README.md`. Update this table only from completed result files.
