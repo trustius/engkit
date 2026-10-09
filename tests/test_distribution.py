@@ -84,7 +84,7 @@ class DistributionTest(TempDirTest):
         expected = {
             f"engkit/skills/{path.parent.name}/SKILL.md" for path in SKILLS_DIR.glob("*/SKILL.md")
         }
-        self.assertEqual(len(expected), 6)
+        self.assertEqual(len(expected), 7)
         self.assertTrue(expected <= set(names), sorted(expected - set(names)))
         for name in names:
             parts = name.split("/")
@@ -103,7 +103,7 @@ class DistributionTest(TempDirTest):
     def test_installed_cli_works_from_an_unrelated_directory(self):
         elsewhere = self.make_project("unrelated-cwd")
         listing = json.loads(run_command([self.engkit, "list", "--json"], cwd=elsewhere).stdout)
-        self.assertEqual(len(listing["skills"]), 6)
+        self.assertEqual(len(listing["skills"]), 7)
         run_command([self.engkit, "validate"], cwd=elsewhere)
         project = self.make_project("consumer", {"README.md": "consumer\n"})
         install = [self.engkit, "install", "bug-investigate", "--target", "all"]

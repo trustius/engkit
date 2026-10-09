@@ -152,6 +152,7 @@ class ValidatorTest(TempDirTest):
 class CanonicalSkillsTest(TempDirTest):
     EXPECTED = {
         "bug-investigate",
+        "implement-plan",
         "change-review",
         "change-plan",
         "engineering-onboard",

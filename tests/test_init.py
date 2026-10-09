@@ -33,7 +33,7 @@ class InitTest(TempDirTest):
     def test_fresh_project_all_targets(self):
         code, out, err = self.init("--target", "all")
         self.assertEqual(code, 0, err)
-        self.assertEqual(len(self.names), 6)
+        self.assertEqual(len(self.names), 7)
         for name in self.names:
             self.assertTrue((self.project / ".claude/skills" / name / "SKILL.md").is_file())
             self.assertTrue((self.project / ".agents/skills" / name / "SKILL.md").is_file())
@@ -41,9 +41,9 @@ class InitTest(TempDirTest):
         self.assertTrue((memory_dir / "INDEX.md").is_file())
         self.assertTrue((memory_dir / ".gitignore").is_file())
         lock = json.loads((self.project / ".engkit/skills.lock.json").read_text())
-        self.assertEqual(len(lock["skills"]), 6)
+        self.assertEqual(len(lock["skills"]), 7)
         self.assertIn("CLAUDE.md:", out)
-        self.assertIn("installed 12, already installed 0, conflicts 0", out)
+        self.assertIn("installed 14, already installed 0, conflicts 0", out)
         self.assertIn(CLAUDE_NEXT, out)
         self.assertIn(CODEX_NEXT, out)
 
@@ -53,7 +53,7 @@ class InitTest(TempDirTest):
         code, out, err = self.init("--target", "all")
         self.assertEqual(code, 0, err)
         self.assertEqual(snapshot(self.project), before)
-        self.assertIn("installed 0, already installed 12, conflicts 0", out)
+        self.assertIn("installed 0, already installed 14, conflicts 0", out)
         self.assertIn("kept existing", out)
 
     def test_one_conflict_does_not_block_the_rest(self):

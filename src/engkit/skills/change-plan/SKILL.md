@@ -44,7 +44,8 @@ verifiable slices, with testable acceptance criteria, risks and open questions.
 5. List open questions. If an answer would change the plan, ask; otherwise record an
    assumption and continue.
 6. Split the work into slices that are each reviewable and leave the system working. Give each
-   a purpose, changes, dependencies and one verification.
+   a purpose, changes, dependencies and one verification. Each verification is either a local
+   command (argv and cwd) or a named manual check, so /implement-plan can run or request it.
 7. Build a test matrix: behavior or edge case, test level, slice, expected result.
 8. If the change touches data, external contracts or production, write rollback steps and what
    to monitor.
@@ -66,7 +67,7 @@ Assumptions:
 - plausible hypothesis: <likely, not confirmed>
 - untested assumption: <taken as given>
 Affected paths: <path - observed | expected | new>
-Slices: 1. <purpose; changes; depends on; verification>
+Slices: 1. <purpose; changes; depends on; verification: command (argv, cwd) or manual check>
 Test matrix: <case | level | slice | expected>
 Rollback and observability: <steps> or n/a
 Risks and alternatives: <list>
@@ -74,7 +75,7 @@ Open questions: <list>
 Acceptance criteria: <testable list>
 Commands run: <exact command - result> or none
 Status: plan only, not implemented
-Next step: /change-review after the code is written, or none
+Next step: /implement-plan <plan file>
 ```
 
 ## Guardrails
