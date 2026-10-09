@@ -5,11 +5,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Current state and commands
 
 engkit is a Python ≥3.11 package with one runtime dependency, PyYAML.
-Planning documents live in `docs/*_PLAN.md` (`IMPLEMENTATION_PLAN.md`,
+Planning documents live in `docs/plans/` (`IMPLEMENTATION_PLAN.md`,
 `ENHANCEMENT_PLAN.md`, `PYPI_RELEASE_PLAN.md`, `SLASH_COMMANDS_PLAN.md`). They are
-local only: `.gitignore` excludes them, so never `git add` them and never link to
+local only: `.gitignore` excludes `docs/plans/`, so never `git add` them and never link to
 them from tracked files. Read the relevant plan before starting a task; older
-milestone sections in `docs/IMPLEMENTATION_PLAN.md` are partly superseded.
+milestone sections in `docs/plans/IMPLEMENTATION_PLAN.md` are partly superseded.
 Packaging and the release pipeline are in `docs/adr/0005-pypi-packaging.md`;
 release steps are in `RELEASING.md`.
 
@@ -50,7 +50,7 @@ Commands:
 - `engkit memory init [--project-dir P]`
 - `engkit memory validate [--project-dir P]`
 
-Read the relevant plan in `docs/` before starting any task.
+Read the relevant plan in `docs/plans/` before starting any task.
 After a milestone-sized change, report the files changed, the commands run and
 their results, any unresolved risks, and the next tasks.
 
