@@ -1,5 +1,22 @@
 # Recorded test results
 
+## 2026-10-09: enhancement plan P0–P6 (engkit 0.1.0, unreleased)
+
+Environment: macOS (Darwin 25.5.0, arm64), Python 3.10.12 venv, PyYAML 6.0.2, git 2.39.2,
+ruff 0.16.10. No network: git tests use `file://` repositories in temp directories.
+
+| Command | Result |
+|---|---|
+| `.venv/bin/python -m unittest discover -s tests -t .` | **164 tests passed**, 0 skipped |
+| `.venv/bin/ruff check src tests` / `ruff format --check src tests` | clean |
+| `.venv/bin/engkit validate` | `ok: 6 skill(s) valid` |
+| README quickstart from a fresh clone (temp HOME, `file://` source) | ran end to end: list, validate, built-in installs, remote preview then `--yes`, update (preview, then `--yes`), uninstall, memory init/validate, doctor |
+
+Not run: agent-level smoke tests (`manual-smoke-tests.md`), eval cases and trigger evals
+(`evals/README.md`, `evals/triggers/README.md`): every outcome is `not-run`.
+
+## Earlier: initial MVP
+
 ## 2026-10-09: initial MVP implementation (engkit 0.1.0)
 
 Environment: macOS (Darwin 25.5.0, arm64), Python 3.10.12 venv

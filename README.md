@@ -65,11 +65,11 @@ repeat the command with `--yes`. The URL below is a placeholder.
 ```bash
 # 1. Preview: prints URL, ref, resolved commit, file list and executable files. Writes nothing.
 .venv/bin/engkit install --source https://example.test/team/skills.git \
-  --skill change-review --target claude --project-dir ~/code/my-app
+  --skill team-review --target claude --project-dir ~/code/my-app
 
 # 2. Install the previewed content. Pin --ref to a commit to guarantee it.
 .venv/bin/engkit install --source https://example.test/team/skills.git --ref <commit> \
-  --skill change-review --target claude --project-dir ~/code/my-app --yes
+  --skill team-review --target claude --project-dir ~/code/my-app --yes
 ```
 
 Accepted URLs: `https://`, `ssh://`, `user@host:path` and `file://`. Archives
@@ -85,8 +85,8 @@ Installed sources are recorded in a lockfile:
 
 ```bash
 .venv/bin/engkit update --target all --project-dir ~/code/my-app          # built-in skills
-.venv/bin/engkit update change-review --target claude --project-dir ~/code/my-app --yes   # git source
-.venv/bin/engkit uninstall change-review --target claude --project-dir ~/code/my-app
+.venv/bin/engkit update team-review --target claude --project-dir ~/code/my-app --yes   # git source
+.venv/bin/engkit uninstall team-review --target claude --project-dir ~/code/my-app
 ```
 
 `update` and `uninstall` act only on installs whose files still match the
