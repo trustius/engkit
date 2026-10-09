@@ -1,6 +1,6 @@
 # ADR 0001: Implementation language, dependencies and distribution
 
-- Status: accepted (M0)
+- Status: accepted (M0). The distribution and resource-lookup parts are superseded by ADR 0005; the language choice still stands.
 - Date: 2026-10-09
 
 ## Context
@@ -36,6 +36,10 @@ other runtime dependencies without a new ADR. Tests use only `unittest`
 offline.
 
 ## Distribution and resource lookup
+
+> Superseded by ADR 0005: skills now live in `src/engkit/skills/` and ship as
+> setuptools package data; the `setup.py`/`_resources` mechanism described below
+> no longer exists.
 
 - The canonical source stays at the repository root: `skills/`. Nothing is
   duplicated in source control.

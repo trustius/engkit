@@ -1,0 +1,136 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions: {}
+
+concurrency:
+  group: release-${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    outputs:
+      digest: ${{ steps.digest.outputs.digest }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+      - name: Verify tagged commit is on main
+        run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+      - name: Verify tag matches package version
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          python - <<'PY'
+          import ast
+          import os
+          import re
+          import sys
+
+          tag = os.environ["TAG_NAME"]
+          if not re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+", tag):
+              sys.exit(f"Tag {tag!r} does not match v<MAJOR>.<MINOR>.<PATCH>")
+          tree = ast.parse(open("src/engkit/__init__.py", encoding="utf-8").read())
+          version = None
+          for node in tree.body:
+              if isinstance(node, ast.Assign) and any(
+                  isinstance(t, ast.Name) and t.id == "__version__" for t in node.targets
+              ):
+                  version = ast.literal_eval(node.value)
+          if version is None:
+              sys.exit("__version__ not found in src/engkit/__init__.py")
+          if tag[1:] != version:
+              sys.exit(f"Tag {tag!r} does not match package version {version!r}")
+          print(f"Tag {tag} matches package version {version}")
+          PY
+      - name: Install hash-locked build tools
+        run: >-
+          python -m pip install --require-hashes --only-binary=:all:
+          -r requirements/release-build.txt
+      - name: Build
+        run: python -m build --no-isolation
+      - name: Record artifact digest
+        id: digest
+        run: echo "digest=$(sha256sum dist/* | sha256sum | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+          retention-days: 5
+
+  # twine and its dependencies run in their own job so they can never alter the artifact.
+  check:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions: {}
+    steps:
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist
+          path: dist/
+      - name: Verify artifact digest
+        env:
+          EXPECTED_DIGEST: ${{ needs.build.outputs.digest }}
+        run: test "$(sha256sum dist/* | sha256sum | cut -d' ' -f1)" = "$EXPECTED_DIGEST"
+      - name: Check metadata
+        run: python -m pip install twine==7.0.0 && twine check dist/*
+
+  publish-testpypi:
+    needs: [build, check]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/engkit
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist
+          path: dist/
+      - name: Verify artifact digest
+        env:
+          EXPECTED_DIGEST: ${{ needs.build.outputs.digest }}
+        run: test "$(sha256sum dist/* | sha256sum | cut -d' ' -f1)" = "$EXPECTED_DIGEST"
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          # Lets a re-run of a partly failed release continue to the PyPI job.
+          skip-existing: true
+
+  publish-pypi:
+    needs: [build, publish-testpypi]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: pypi
+      url: https://pypi.org/p/engkit
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist
+          path: dist/
+      - name: Verify artifact digest
+        env:
+          EXPECTED_DIGEST: ${{ needs.build.outputs.digest }}
+        run: test "$(sha256sum dist/* | sha256sum | cut -d' ' -f1)" = "$EXPECTED_DIGEST"
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2

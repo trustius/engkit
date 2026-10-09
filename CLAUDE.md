@@ -4,19 +4,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Current state and commands
 
-engkit is a Python ≥3.10 package with one runtime dependency, PyYAML. The
+engkit is a Python ≥3.11 package with one runtime dependency, PyYAML. The
 current direction, including what was removed and why, is in
 `ENHANCEMENT_PLAN.md`. Read it before starting a task. Older milestone sections
 in `IMPLEMENTATION_PLAN.md` are partly superseded, as noted at its top.
+Packaging and the release pipeline are in `docs/adr/0005-pypi-packaging.md`;
+release steps are in `RELEASING.md`.
 
 ```bash
-python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"   # needs network for PyYAML and ruff
+python3.11 -m venv .venv && .venv/bin/pip install -e ".[dev]"   # needs network for PyYAML and dev tools
 
 .venv/bin/python -m unittest discover -s tests -t .          # full suite (includes a wheel build)
+.venv/bin/python -m unittest tests.test_distribution         # sdist -> wheel -> clean venv, run outside checkout
 .venv/bin/python -m unittest tests.test_installer            # one module
 .venv/bin/python -m unittest tests.test_installer.InstallerTest.test_conflict_leaves_existing_untouched   # one test
 ENGKIT_SKIP_DIST=1 .venv/bin/python -m unittest discover -s tests -t .   # skip the wheel test
 
+.venv/bin/python -m build                                    # sdist and wheel into dist/
+.venv/bin/twine check dist/*                                 # package metadata check
 .venv/bin/ruff check src tests                               # lint
 .venv/bin/ruff format src tests                              # format (check with --check)
 .venv/bin/engkit validate                                    # skill lint
@@ -26,8 +31,9 @@ Layout: `src/engkit/` contains `cli` (argument parsing and output only),
 `catalog`, `validator`, `platforms` (the only place that maps platform and scope
 to paths), `installer`, `sources`, `lockfile`, `memory`, `fsutil`,
 `doctor` and `errors`. The only packaged resources are `src/engkit/skills/`,
-installed as setuptools package data (`pyproject.toml`). Design decisions are in `docs/adr/`. Pytest
-also works and is limited to `tests/` by `pyproject.toml`.
+installed as setuptools package data (`pyproject.toml`). `.github/workflows/`
+holds CI (`ci.yml`) and the release pipeline (`release.yml`). Design decisions
+are in `docs/adr/`. Pytest also works and is limited to `tests/` by `pyproject.toml`.
 
 Commands:
 
@@ -89,6 +95,7 @@ difference in `docs/compatibility.md`):
 - **Tests use temp home and project dirs only.** Never touch the real `~/.claude`, `~/.codex` or `~/.engkit`.
 - **Use a real YAML parser** (`yaml.safe_load` / `safe_dump`). Do not hand-roll YAML. Otherwise prefer the standard library. PyYAML is the only runtime dependency.
 - **No new dependencies, network calls, telemetry or package installs** without explicit user approval.
+- **Agents never create repositories, push, tag, configure PyPI or publish.** Release steps are run by the owner (see `RELEASING.md`; packaging decisions in `docs/adr/0005-pypi-packaging.md`).
 - **Honest reporting:** do not claim a test passed unless it ran. When Claude Code or Codex cannot be run locally, mark end-to-end checks as pending. Evals must never contain invented scores, and fixtures must be synthetic.
 
 ## Coding rules
