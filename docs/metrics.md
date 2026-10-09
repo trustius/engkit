@@ -25,6 +25,8 @@ Tests: 131 passing (`python -m unittest discover -s tests -t .`).
 | `validator.py` | 148 |
 | **total** | 3562 |
 
+Skill names below are as of this date; they were later renamed (project-discovery→engineering-onboard, implementation-planning→plan-implement, systematic-debugging→bug-investigate, stack-selection→stack-select, project-memory→memory-save, code-review→change-review).
+
 | SKILL.md | Lines |
 |---|---|
 | `code-review` | 74 |
@@ -54,6 +56,8 @@ Tests: 173 passing, 0 skipped (`python -m unittest discover -s tests -t .`). ruf
 | `sources.py` | 190 |
 | `validator.py` | 219 |
 | **total** | 2413 (plan target ≤1800: not met) |
+
+Skill names below are as of this date; they were later renamed (project-discovery→engineering-onboard, implementation-planning→plan-implement, systematic-debugging→bug-investigate, stack-selection→stack-select, project-memory→memory-save, code-review→change-review).
 
 | SKILL.md | Lines |
 |---|---|

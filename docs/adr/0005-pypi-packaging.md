@@ -49,11 +49,13 @@ there, so no Windows claim is made.
 `vX.Y.Z`):
 
 1. `build` job: checks that the tag equals `__version__` by reading the file as
-   text, without executing project code; builds the sdist and wheel; runs
-   `twine check`; uploads the `dist` artifact.
-2. `publish-testpypi` job: environment `testpypi`, `id-token: write`, publishes
+   text, without executing project code; builds the sdist and wheel; records
+   the artifact digest; uploads the `dist` artifact.
+2. `check` job (no permissions, no checkout): downloads the artifact, verifies
+   its digest and runs `twine check`.
+3. `publish-testpypi` job: environment `testpypi`, `id-token: write`, publishes
    the artifact to TestPyPI through Trusted Publishing (OIDC).
-3. `publish-pypi` job: environment `pypi` with a required reviewer, publishes
+4. `publish-pypi` job: environment `pypi` with a required reviewer, publishes
    the same artifact to PyPI after manual approval.
 
 Trusted Publishing is used on both indexes, so no API token is stored in the
@@ -75,7 +77,14 @@ performs the release steps in `RELEASING.md`.
 - The release build installs hash-locked tools (`requirements/release-build.txt`:
   build, setuptools, packaging, pyproject_hooks) and builds with `--no-isolation`,
   so no unpinned package runs where the artifact is produced. `twine check` runs
-  in a separate job without publish rights.
+  in the separate `check` job without publish rights.
+- `twine` in the `check` job is pinned by version (`twine==7.0.0`) but not by
+  hash (hash-locking its dependency tree needs network lookups; deferred). The
+  job has no permissions and only reads the artifact: its digest is verified
+  before `twine check` runs and the job uploads nothing, so twine cannot alter
+  the published artifact (the digest is not re-checked after twine runs).
+- TestPyPI publishing does not use `skip-existing`, so a changed artifact under
+  an already-uploaded version fails instead of being silently skipped.
 - A sha256 digest of `dist/` is recorded by the build job and verified before
   `twine check` and before each publish step.
 - Runtime dependency: PyYAML only. Dev tools are pinned in the `dev` extra

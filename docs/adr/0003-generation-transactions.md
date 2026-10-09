@@ -1,6 +1,6 @@
 # ADR 0003: Generation transactions, locking, backup and recovery
 
-- Status: superseded by ENHANCEMENT_PLAN.md (M6 removed, 2026-10-09)
+- Status: superseded when the generated-context feature was removed (2026-10-09)
 
 ## Layout (all under `<project>/.engkit/`)
 

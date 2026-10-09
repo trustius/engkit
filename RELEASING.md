@@ -49,8 +49,14 @@ No API tokens are stored anywhere. Publishing uses Trusted Publishing (OIDC).
    ```
 
 4. **Watch the release workflow** in GitHub Actions. The `build` job checks that
-   the tag equals `__version__`, builds and runs `twine check`. The
-   `publish-testpypi` job then uploads to TestPyPI.
+   the tag equals `__version__` and builds. The separate `check` job verifies
+   the artifact digest and runs `twine check`. The `publish-testpypi` job then
+   uploads to TestPyPI.
+
+   If a job fails, re-run only the failed jobs of the same workflow run (the
+   artifact is reused and its digest verified). Do not re-run the whole
+   workflow: that rebuilds a different artifact. If TestPyPI already has the
+   files from a failed attempt, bump the version and tag again.
 
    Verify the TestPyPI build in a separate pipx home, so an existing
    installation is not replaced:

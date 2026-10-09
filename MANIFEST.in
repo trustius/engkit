@@ -1,0 +1,6 @@
+graft evals
+graft tests
+graft requirements
+graft .github/workflows
+prune docs/plans
+global-exclude __pycache__ *.py[cod]

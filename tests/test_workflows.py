@@ -87,6 +87,10 @@ class WorkflowTests(unittest.TestCase):
             runs = " ".join(step.get("run", "") for step in steps_of(jobs[job_name]))
             self.assertIn("$EXPECTED_DIGEST", runs, job_name)
 
+    def test_testpypi_does_not_skip_existing(self):
+        for step in steps_of(self.release["jobs"]["publish-testpypi"]):
+            self.assertNotIn("skip-existing", step.get("with", {}))
+
     def test_ci_matrix(self):
         matrix = self.ci["jobs"]["test"]["strategy"]["matrix"]
         self.assertFalse(self.ci["jobs"]["test"]["strategy"]["fail-fast"])
