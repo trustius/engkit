@@ -25,7 +25,8 @@ URL_RE = re.compile(
     r"|[A-Za-z0-9_][A-Za-z0-9_.-]*@[A-Za-z0-9][A-Za-z0-9.-]*:[!-,.-9;-~][!-~]*)\Z"
 )
 REF_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._/-]*\Z")
-URL_IN_TEXT_RE = re.compile(r"(?:https?|ssh|file)://[^\s'\"<>]+")
+USERINFO_RE = re.compile(r"([a-z][a-z0-9+.-]*://)[^\s/'\"<>]*@", re.IGNORECASE)
+SCP_PASSWORD_RE = re.compile(r"[^\s/@:'\"<>]+:[^\s/@'\"<>]*@(?=[^\s/@'\"<>]+:)")
 GIT_CONFIG = (
     "protocol.ext.allow=never",
     "core.hooksPath=/dev/null",
@@ -47,24 +48,18 @@ class Fetched:
     commit: str
 
 
-def _strip_userinfo(match: re.Match) -> str:
-    url = match.group()
-    try:
-        netloc = urlsplit(url).netloc
-    except ValueError:
-        return "<url>"
-    return url.replace(netloc, netloc.rpartition("@")[2], 1)
-
-
 def redact(text: str) -> str:
-    """Drop ``user:password@`` from every URL in ``text``."""
-    return URL_IN_TEXT_RE.sub(_strip_userinfo, text)
+    """Drop ``user:password@`` from every URL or scp-style address in ``text``."""
+    return SCP_PASSWORD_RE.sub("", USERINFO_RE.sub(r"\1", text))
 
 
 def _has_credentials(url: str) -> bool:
     if "?" in url or "#" in url:
         return True
-    parts = urlsplit(url)
+    try:
+        parts = urlsplit(url)
+    except ValueError:
+        raise EngkitError("malformed source URL", EXIT_USAGE) from None
     userinfo = parts.netloc.rpartition("@")[0]
     return bool(userinfo) and (parts.scheme == "https" or ":" in userinfo)
 

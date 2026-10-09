@@ -6,6 +6,7 @@ import contextlib
 import json
 import os
 import re
+import stat
 from pathlib import Path
 
 from engkit import fsutil, platforms
@@ -19,6 +20,7 @@ except ImportError:  # Windows
 
 LOCK_NAME = "skills.lock.json"
 ENTRY_KEYS = {"source", "ref", "path", "commit", "content_sha256", "targets"}
+MAX_LOCK_BYTES = 1024 * 1024
 SHA256_RE = re.compile(r"[0-9a-f]{64}\Z")
 
 
@@ -76,11 +78,24 @@ def read(root: Path) -> dict:
     path = lock_file(root)
     if fsutil.check_no_symlinks(root, (".engkit",)):
         raise EngkitError(f"refusing symlinked {path.parent}", EXIT_FAILURE)
+    text = _read_text(path)
+    return _parse(text, path) if text else {}
+
+
+def _read_text(path: Path) -> str:
+    """Read a small regular file without following a symlink or blocking on a FIFO."""
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
     try:
-        text = path.read_text(encoding="utf-8")
+        descriptor = os.open(path, flags)
     except FileNotFoundError:
-        return {}
-    return _parse(text, path)
+        return ""
+    except OSError as exc:
+        raise EngkitError(f"cannot read {path}: {exc.strerror}", EXIT_FAILURE) from None
+    with os.fdopen(descriptor, "rb") as handle:
+        info = os.fstat(handle.fileno())
+        if not stat.S_ISREG(info.st_mode) or info.st_size > MAX_LOCK_BYTES:
+            raise EngkitError(f"{path} must be a regular file of at most 1 MiB", EXIT_FAILURE)
+        return handle.read(MAX_LOCK_BYTES + 1).decode("utf-8", errors="replace")
 
 
 def _dump(skills: dict) -> str:

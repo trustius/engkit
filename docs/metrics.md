@@ -35,7 +35,7 @@ Tests: 131 passing (`python -m unittest discover -s tests -t .`).
 
 ## After enhancement plan P0–P6 (2026-10-09)
 
-Tests: 164 passing, 0 skipped (`python -m unittest discover -s tests -t .`). ruff check and format clean.
+Tests: 173 passing, 0 skipped (`python -m unittest discover -s tests -t .`). ruff check and format clean.
 
 | Module | Lines |
 |---|---|
@@ -46,14 +46,14 @@ Tests: 164 passing, 0 skipped (`python -m unittest discover -s tests -t .`). ruf
 | `doctor.py` | 128 |
 | `errors.py` | 16 |
 | `fsutil.py` | 251 |
-| `installer.py` | 654 |
-| `lockfile.py` | 109 |
+| `installer.py` | 674 |
+| `lockfile.py` | 124 |
 | `memory.py` | 203 |
 | `platforms.py` | 96 |
 | `resources.py` | 36 |
-| `sources.py` | 195 |
+| `sources.py` | 190 |
 | `validator.py` | 219 |
-| **total** | 2383 (plan target ≤1800: not met) |
+| **total** | 2413 (plan target ≤1800: not met) |
 
 | SKILL.md | Lines |
 |---|---|

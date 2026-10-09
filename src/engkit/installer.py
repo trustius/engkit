@@ -407,6 +407,7 @@ def _swap(job: _Job, destination: platforms.Destination):
     except BaseException as exc:
         # Never delete staging while it may hold the only copy of the original.
         if os.path.lexists(old):
+            keep = True  # stays set if _restore is itself interrupted
             keep = not _restore(old, path, job.new_digest, job.native)
         if keep and isinstance(exc, Exception):
             raise OSError(f"{exc}; original kept at {old}") from exc
@@ -592,16 +593,35 @@ def _update_name(run: _UpdateRun, name: str) -> list[InstallResult]:
     return _apply_updates(run, job, managed, commit)
 
 
+def _blocked_targets(job: _Job, destinations: list) -> list[InstallResult]:
+    """Results refusing the whole update when any target is not pristine; else an empty list."""
+    refusals = []
+    for destination in destinations:
+        current, refusal = _installed_digest(destination, job.name)
+        if not refusal and current not in (job.expected, job.new_digest):
+            refusal = MODIFIED
+        refusals.append(refusal)
+    if not any(refusals):
+        return []
+    skipped = (CONFLICT, "skipped (another target is modified)")
+    return [
+        _result(destination, job.name, *(refusal or skipped))
+        for destination, refusal in zip(destinations, refusals, strict=True)
+    ]
+
+
 def _apply_updates(run: _UpdateRun, job: _Job, managed: list[str], commit) -> list:
     with lockfile.transaction(run.root) as skills:
         locked = skills[job.name]
         job = replace(job, expected=locked["content_sha256"])
-        results = []
-        for platform_id in managed:
-            destination = _destination(run.root, run.scope, platform_id)
-            results.append(_update_target(job, destination))
+        destinations = [_destination(run.root, run.scope, item) for item in managed]
+        blocked = _blocked_targets(job, destinations)
+        if blocked:
+            return blocked
+        results = [_update_target(job, destination) for destination in destinations]
         current = {item.platform for item in results if item.status in (UPDATED, UP_TO_DATE)}
-        if current == set(locked["targets"]):
+        # Unchanged content with a moved commit is only recorded on an explicit --yes.
+        if current == set(locked["targets"]) and (run.yes or commit is None):
             locked.update(content_sha256=job.new_digest, commit=commit)
     return results
 

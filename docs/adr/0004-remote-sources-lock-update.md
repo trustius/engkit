@@ -140,3 +140,7 @@ use the network. `validate`, `doctor`, `memory`, built-in `install` and
   generally do, and `file://` does.
 - A local attacker who swaps managed directories mid-operation is out of
   scope (see ADR 0002).
+- A fetched repository's `.gitattributes` can invoke filter drivers that the
+  user already defined in their own global git config during checkout (LFS
+  smudge is disabled). engkit defines no filters itself. Full mitigation would
+  need `git archive` extraction or git >= 2.40 attribute-source control.

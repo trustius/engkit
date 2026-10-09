@@ -347,6 +347,38 @@ class LifecycleFixesTest(TempDirTest):
         kept = next(self.staging.iterdir()) / "old/SKILL.md"
         self.assertTrue(kept.is_file())
 
+    def test_second_interrupt_inside_restore_keeps_the_only_copy(self):
+        self.install()
+        self.change_upstream()
+
+        def interrupt(path):
+            raise KeyboardInterrupt
+
+        with (
+            self.hook({"update_moved": interrupt}),
+            mock.patch.object(installer, "_restore", side_effect=KeyboardInterrupt),
+            self.assertRaises(KeyboardInterrupt),
+        ):
+            self.update()
+        kept = next(self.staging.iterdir()) / "old/SKILL.md"
+        self.assertTrue(kept.is_file())
+
+    def test_modified_target_blocks_updating_every_target(self):
+        self.install("all")
+        self.change_upstream()
+        codex = self.project / ".agents/skills/demo"
+        original = (codex / "SKILL.md").read_text()
+        self.tamper(codex)
+        before, lock_before = snapshot(self.project), lockfile.read(self.project)
+        results = self.update()
+        self.assertEqual({item.status for item in results}, {"conflict"})
+        self.assertEqual(snapshot(self.project), before)
+        self.assertEqual(lockfile.read(self.project), lock_before)
+        (codex / "SKILL.md").write_text(original)
+        self.assertEqual([item.status for item in self.update()], ["updated", "updated"])
+        digest = installer._tree_digest(self.dest)
+        self.assertEqual(lockfile.read(self.project)["demo"]["content_sha256"], digest)
+
     def test_partial_target_update_is_refused(self):
         self.install("all")
         self.change_upstream()
@@ -417,6 +449,68 @@ class LifecycleFixesTest(TempDirTest):
         self.assertEqual([r.status for r in self.update()], ["up to date", "up to date"])
         after = (path.read_bytes(), os.stat(path).st_ino, os.stat(path).st_mtime_ns)
         self.assertEqual(after, before)
+
+
+class UrlHandlingTest(TempDirTest):
+    def test_malformed_url_is_a_clean_usage_error(self):
+        with self.assertRaises(EngkitError) as caught:
+            sources.check_source("https://h@[::1/x", None, None)
+        self.assertEqual(caught.exception.exit_code, EXIT_USAGE)
+        argv = ["install", "--source", "https://h@[::1/x", "--skill", "x", "--target", "claude"]
+        code, _, err = run_cli([*argv, "--project-dir", str(self.make_project())])
+        self.assertEqual(code, EXIT_USAGE)
+        self.assertNotIn("Traceback", err)
+
+    def test_rejected_urls_never_echo_credentials(self):
+        urls = (
+            "ftp://user:hunter2@h/x",
+            "git://user:hunter2@h/x",
+            "HTTPS://user:hunter2@h/x?q",
+            "user:hunter2@host:path",
+            "ssh://user:hunter2@h:22/x y",
+        )
+        for url in urls:
+            with self.subTest(url=url):
+                self.assertNotIn("hunter2", sources.redact(url))
+                with self.assertRaises(EngkitError) as caught:
+                    sources.check_source(url, None, None)
+                self.assertNotIn("hunter2", str(caught.exception))
+
+    def test_update_reports_a_malformed_locked_source_and_continues(self):
+        project = self.make_project()
+        toolkit = self.make_toolkit({"demo": skill_text("demo"), "aaa": skill_text("aaa")})
+        installer.install(toolkit, "demo", "claude", project_dir=project)
+        installer.install(toolkit, "aaa", "claude", project_dir=project)
+        with lockfile.transaction(project) as skills:
+            skills["aaa"]["source"] = "https://h@[::1/x"
+        results = installer.update(toolkit, [], "all", project_dir=project)
+        statuses = {item.skill: item.status for item in results}
+        self.assertEqual(statuses, {"aaa": "error", "demo": "up to date"})
+
+
+class LockReadTest(TempDirTest):
+    def setUp(self):
+        super().setUp()
+        self.project = self.make_project()
+        (self.project / ".engkit").mkdir()
+        self.path = lockfile.lock_file(self.project)
+
+    def test_symlinked_lock_is_refused(self):
+        target = self.tmp / "elsewhere.json"
+        target.write_text('{"lock_version": 1, "skills": {}}')
+        self.path.symlink_to(target)
+        with self.assertRaises(EngkitError):
+            lockfile.read(self.project)
+
+    def test_fifo_lock_is_refused_without_hanging(self):
+        os.mkfifo(self.path)
+        with self.assertRaises(EngkitError):
+            lockfile.read(self.project)
+
+    def test_oversized_lock_is_refused(self):
+        self.path.write_text('{"lock_version": 1, "skills": {}}' + " " * MIB)
+        with self.assertRaises(EngkitError):
+            lockfile.read(self.project)
 
 
 class CliArgumentTest(TempDirTest):

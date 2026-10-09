@@ -244,6 +244,19 @@ class RemoteInstallTest(TempDirTest):
         self.assertEqual(code, EXIT_OK)
         self.assertIn("up to date", out)
 
+    def test_unchanged_content_with_a_moved_commit_leaves_the_lock_alone(self):
+        self.install("--yes")
+        (self.repo / "unrelated.txt").write_text("x\n")
+        new_commit = commit_all(self.repo)
+        lock_path = lockfile.lock_file(self.project)
+        before = lock_path.read_bytes()
+        argv = ["update", "--project-dir", str(self.project)]
+        code, out, _ = run_cli(argv)
+        self.assertEqual((code, "up to date" in out), (EXIT_OK, True))
+        self.assertEqual(lock_path.read_bytes(), before)
+        run_cli([*argv, "--yes"])
+        self.assertEqual(self.lock()["demo"]["commit"], new_commit)
+
 
 if __name__ == "__main__":
     unittest.main()

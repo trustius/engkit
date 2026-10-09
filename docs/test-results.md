@@ -7,7 +7,7 @@ ruff 0.16.10. No network: git tests use `file://` repositories in temp directori
 
 | Command | Result |
 |---|---|
-| `.venv/bin/python -m unittest discover -s tests -t .` | **164 tests passed**, 0 skipped |
+| `.venv/bin/python -m unittest discover -s tests -t .` | **173 tests passed**, 0 skipped |
 | `.venv/bin/ruff check src tests` / `ruff format --check src tests` | clean |
 | `.venv/bin/engkit validate` | `ok: 6 skill(s) valid` |
 | README quickstart from a fresh clone (temp HOME, `file://` source) | ran end to end: list, validate, built-in installs, remote preview then `--yes`, update (preview, then `--yes`), uninstall, memory init/validate, doctor |
