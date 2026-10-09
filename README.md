@@ -228,7 +228,6 @@ python3.11 -m venv .venv
 - Tests create temporary project and home directories. They never touch your
   real `~/.claude`, `~/.codex`, `~/.agents` or `~/.engkit`.
 - Coding rules and invariants: [CLAUDE.md](https://github.com/trustius/engkit/blob/main/CLAUDE.md).
-  Direction: [ENHANCEMENT_PLAN.md](https://github.com/trustius/engkit/blob/main/ENHANCEMENT_PLAN.md).
   Architecture decisions: [docs/adr/](https://github.com/trustius/engkit/blob/main/docs/adr/).
 
 ## Release

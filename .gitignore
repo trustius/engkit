@@ -9,3 +9,6 @@ dist/
 .engkit/staging/
 .engkit/generation.lock
 .ruff_cache/
+
+# Planning documents are kept locally, not in git
+docs/*_PLAN.md
