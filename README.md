@@ -1,297 +1,154 @@
 # engkit
 
-engkit is a portable set of engineering-workflow commands for **Claude Code**
-and **OpenAI Codex**, plus a small local CLI to install, update and diagnose
-them. Each command is a skill (`SKILL.md`) that your agent runs on demand. The
-commands also keep a small, local, project memory that both agents can read.
+Engineering-workflow commands for **Claude Code** and **OpenAI Codex**, plus a small
+CLI to install them. Each command is a skill (`SKILL.md`) your agent runs on demand.
+They share a local project memory that both agents can read.
 
-engkit is not an agent runtime, an MCP server or an LLM client. It never runs
-the scripts that ship with a skill. Only `--source` commands use the network
-(to fetch git sources you ask for; see [Security model](#security-model)).
+engkit is not an agent runtime or an LLM client, and it never runs the scripts that
+ship with a skill.
 
 ## Quickstart
 
 ```bash
-pipx install engkit          # or: uv tool install engkit, or: pip install engkit
+pipx install engkit          # or: uv tool install engkit / pip install engkit
 cd my-project
 engkit init                  # installs the commands for the agents found on PATH
 ```
 
-Then open Claude Code in `my-project` and run:
+Open Claude Code in `my-project` and run `/engineering-onboard`. It maps the project
+and records what it learns in `.engkit/memory/`. In Codex, type `$engineering-onboard`
+instead: Codex uses `$name` where Claude Code uses `/name`.
 
-```text
-/engineering-onboard
-```
+`engkit init` looks for `claude` and `codex` on `PATH` (it never runs them). Use
+`--target claude|codex|all` to choose yourself. Running it again changes nothing.
 
-It maps the project and records what it learns in `.engkit/memory/`. A typical
-flow after that:
-
-```text
-/plan-implement add rate limiting to the export API
-/change-review
-/bug-investigate checkout test fails on CI only
-/memory-save
-```
-
-In Codex, type `$engineering-onboard` instead. Codex uses `$name` where Claude
-Code uses `/name`.
-
-`engkit init` installs every command for the platforms it finds on `PATH`
-(`claude`, `codex`). It never runs them. Use `--target claude`, `--target codex`
-or `--target all` to choose yourself. If neither agent is found, it exits with
-code 2 and asks for `--target`. Running it again changes nothing.
-
-Requirements: Python 3.11 or newer, Linux or macOS. PyYAML is the only runtime
-dependency (installed automatically). `git` on `PATH` is needed only for
-`--source` installs and for `update` of git-sourced commands.
+**Requirements:** Python 3.11+, Linux or macOS (Windows is not supported). `git` is
+needed only for `--source` installs.
 
 ## Commands
 
-| Command | Purpose | Without arguments |
+| Command | What it does | Without arguments |
 |---|---|---|
-| `/engineering-onboard` | Map an existing project and record context in `.engkit/memory` | Maps the whole project. An argument limits it to a path or component |
-| `/design-ui` | Turn a UI request into a reviewable design spec before any code is written | Asks what to design, for whom and on which surface |
-| `/plan-implement` | Plan a change before coding | Asks what to plan |
-| `/implement-plan` | Build one slice of a plan in `docs/plans/`, verify it and record progress | Lists incomplete plans, newest first, and asks which one |
-| `/change-review` | Review a change | Reviews uncommitted changes against HEAD. If the tree is clean, asks for a range or PR |
-| `/bug-investigate` | Find the root cause of a bug | Asks for the symptom |
-| `/stack-select` | Compare stacks for a new project or component | Asks for requirements |
-| `/memory-save` | Record decisions, gotchas and unfinished work | Proposes entries from the session and writes only after you confirm. An argument saves that note |
+| `/engineering-onboard` | Maps an existing project and records context in memory | Maps the whole project |
+| `/design-ui` | Turns a UI request into a design spec before any code | Asks what to design |
+| `/plan-implement` | Plans a change before coding | Asks what to plan |
+| `/implement-plan` | Builds one slice of a plan, verifies it, records progress | Lists incomplete plans |
+| `/change-review` | Reviews a change | Reviews uncommitted changes against `HEAD` |
+| `/bug-investigate` | Finds the root cause of a bug | Asks for the symptom |
+| `/stack-select` | Compares stacks for a new project or component | Asks for requirements |
+| `/memory-save` | Records decisions, gotchas and unfinished work | Proposes entries; writes after you confirm |
 
-Claude Code runs a command as `/name`. Codex runs it as `$name`. Type `/skills`
-in Codex to browse the list. Both agents can also pick a command from its
-description, so the model may run one without you typing its name.
+The model may also run a command on its own when your request matches its description.
 
-Every command separates **verified fact**, **plausible hypothesis** and
-**untested assumption**. No command edits files unless you ask it to, except
-`/implement-plan`, which edits only after you approve the slice and its
-commands. None authorizes production access or destructive actions.
-
-### Design → plan → implement → review
-
-A UI change that needs more than one step runs in four commands:
+## Typical flow
 
 ```text
-/design-ui let admins invite teammates by email          # writes docs/plans/YYYY-MM-DD-<slug>-ui-spec.md
-/plan-implement docs/plans/YYYY-MM-DD-<slug>-ui-spec.md  # turns the spec into slices; never edits the spec
-/implement-plan docs/plans/YYYY-MM-DD-<slug>.md          # builds slice 1 after your approval
-/change-review                                           # reviews the uncommitted changes
+/design-ui let admins invite teammates by email       # UI only: writes docs/plans/<date>-<slug>-ui-spec.md
+/plan-implement add rate limiting to the export API   # writes docs/plans/<date>-<slug>.md
+/implement-plan docs/plans/<date>-<slug>.md           # builds slice 1 after your approval, then stops
+/change-review                                        # reviews the uncommitted changes
 ```
 
-`/design-ui` writes only the spec file. It surveys the existing UI read-only,
-then writes flows, text wireframes (each component marked `reused (path)` or
-`new`), states and copy, with an accessibility checklist. It never edits code,
-runs dev servers or builds, and asks before opening a link or adding a UI library.
+`/implement-plan` is the only command that edits project files. It shows the slice,
+the files it will change and the verification commands, and waits for one yes per
+session. It changes only the files the slice names, runs the approved checks, records
+the result in the plan's `## Progress` table and suggests a commit message. Say
+`continue` for the next slice. It never commits, pushes or switches branches.
 
-A change that needs more than one step and has no UI runs in three commands:
+## Rules every command follows
 
-```text
-/plan-implement add rate limiting to the export API     # writes docs/plans/YYYY-MM-DD-<slug>.md
-/implement-plan docs/plans/YYYY-MM-DD-<slug>.md      # builds slice 1 after your approval
-/change-review                                       # reviews the uncommitted changes
-```
+- **Plans** go to `docs/plans/YYYY-MM-DD-<slug>.md` and are never overwritten
+  (`-2`, `-3` on a name clash). Whether you commit them is up to you.
+- **No auto-run on servers.** Nothing runs automatically on prod, staging, dev or
+  test environments; you get the exact steps instead.
+- **Sensitive data** (keys, tokens, passwords, PII) is never printed or stored; it
+  appears as `[REDACTED]` with its location.
+- **Incremental.** Small steps, each checked; the command stops at the first failure.
+- Every claim is labelled **verified fact**, **plausible hypothesis** or
+  **untested assumption**.
 
-`/implement-plan` builds one slice per run. It shows the slice, the files it
-will change and the verification commands of every remaining slice. One yes
-per session approves exactly those commands; a later session needs a new yes,
-and any other command needs its own yes. It edits only the files the slice
-names, plus the plan's `## Progress` table, runs the approved checks and
-records the result. It then suggests a commit message and stops. Say
-`continue` for the next slice. It never commits, pushes or switches branches;
-you do that after review. In Codex, type `$implement-plan` instead.
-
-### Rules every command follows
-
-- **Plans:** a plan of two or more steps is written to
-  `docs/plans/YYYY-MM-DD-<slug>.md` in your project (`/plan-implement` always,
-  `/stack-select` once you choose an option, `/bug-investigate` when the fix needs
-  more than one change). `/design-ui` writes its UI spec to
-  `docs/plans/YYYY-MM-DD-<slug>-ui-spec.md` and nothing else. An existing file is
-  never overwritten: the name gets `-2`, `-3`. Whether you commit `docs/plans/` is your choice; engkit never edits
-  your `.gitignore` or runs `git add`.
-- **No auto-run on servers:** nothing runs automatically on prod, staging, dev or
-  test environments. You get the exact steps instead; a read-only command (status,
-  logs) runs only after you approve that exact command.
-- **Sensitive data:** keys, tokens, passwords, connection strings, PII and PHI are
-  never printed or stored in chat, plans, memory or files; they appear as
-  `[REDACTED]` with their location.
-- **Incremental:** work proceeds in small steps, each checked and reported; the
-  command stops and asks at the first failed check.
-
-## Usage
-
-### Install commands
-
-`engkit init` is the normal way to start. The default scope is the project, and
-`--project-dir` defaults to the current directory.
+## CLI
 
 ```bash
-engkit init --project-dir ~/code/my-app                  # detected platforms
-engkit init --project-dir ~/code/my-app --target claude  # one platform
-engkit init --global --target codex                      # your user account
+engkit init [--project-dir DIR | --global] [--target claude|codex|all]
+engkit install <name> --target claude --project-dir DIR   # one command
+engkit update [name]                                       # refresh locked commands
+engkit uninstall <name> --target claude
+engkit list                       # available commands
+engkit validate                   # check the built-in commands
+engkit doctor                     # read-only diagnostics
+engkit memory validate            # check .engkit/memory/
 ```
 
-`init` creates `.engkit/memory/` for project scope. `--global` skips memory. It
-prints a snippet for your `CLAUDE.md` or `AGENTS.md`. Add it yourself; engkit
-never edits those files.
-
-A conflicting command (a different copy already installed) is reported, the
-other commands still install, and the exit code is nonzero. Nothing is
-overwritten.
-
-To install a single command, use `engkit install`:
-
-```bash
-engkit install bug-investigate --target claude --project-dir ~/code/my-app
-engkit install change-review --target codex --project-dir ~/code/my-app
-engkit install plan-implement --target all --project-dir ~/code/my-app
-```
-
-Use `--global` instead of `--project-dir` to write to your user account
-(`~/.claude/skills` and `~/.agents/skills`).
-
-### Install commands from a git source
-
-Remote installs always show a preview first. Nothing is written until you
-repeat the command with `--yes`. The URL below is a placeholder.
-
-```bash
-# 1. Preview: prints URL, ref, resolved commit, file list and executable files. Writes nothing.
-engkit install --source https://example.test/team/skills.git \
-  --skill team-review --target claude --project-dir ~/code/my-app
-
-# 2. Install the previewed content. Pin --ref to a commit to guarantee it.
-engkit install --source https://example.test/team/skills.git --ref <commit> \
-  --skill team-review --target claude --project-dir ~/code/my-app --yes
-```
-
-Accepted URLs: `https://`, `ssh://`, `user@host:path` and `file://`. Archives
-(`.zip`, `.tar.gz`) are not supported. `git` must be on your `PATH`.
-
-Installed sources are recorded in a lockfile:
-
-- project scope: `<project>/.engkit/skills.lock.json`. Commit it so the team
-  installs the same commands.
-- user scope (`--global`): `~/.engkit/skills.lock.json`.
-
-### Update and remove
-
-```bash
-engkit update --target all --project-dir ~/code/my-app          # all locked commands
-engkit update team-review --target claude --project-dir ~/code/my-app --yes   # git source
-engkit uninstall team-review --target claude --project-dir ~/code/my-app
-```
-
-`update` refreshes every command recorded in the lockfile. `update` and
-`uninstall` act only on installs whose files still match the lockfile hash. If
-you edited a copy, engkit reports a conflict and leaves it alone. Move your
-edits aside yourself, then update or reinstall.
-
-### Project memory
-
-```bash
-engkit memory validate --project-dir ~/code/my-app
-```
-
-`.engkit/memory/` is local to each machine and is never committed (it has its
-own `.gitignore`). Do not store secrets. `memory validate` warns on
-secret-like strings but cannot prove there are none.
-
-### Check the setup
-
-```bash
-engkit doctor --target all --project-dir ~/code/my-app
-```
-
-`doctor` is read-only. It reports installed commands, lockfile state and a
-project memory status line.
-
-### Where commands go
+`--project-dir` defaults to the current directory. `--global` installs into your
+user account instead.
 
 | Target | Project scope | User scope (`--global`) |
 |---|---|---|
 | `claude` | `<project>/.claude/skills/<name>/` | `~/.claude/skills/<name>/` |
 | `codex` | `<project>/.agents/skills/<name>/` | `~/.agents/skills/<name>/` |
 
-Installation copies files and never overwrites anything:
+**Installs never overwrite.** An identical copy is `already installed`. A different
+copy is a `conflict` (exit 3) and is left untouched. `update` and `uninstall` act
+only on copies you have not edited, as recorded in the lockfile
+(`.engkit/skills.lock.json`, which you can commit for your team).
 
-- An identical installed copy reports `already installed`.
-- A different copy reports `conflict` (exit 3) and is left untouched.
-- `--target all` reports each platform separately.
+**Git sources.** You can install commands from a git repository. The first run only
+shows a preview (commit, files, executables); add `--yes` to install it.
 
-## Security model
+```bash
+engkit install --source https://example.test/team/skills.git --skill team-review \
+  --target claude                  # preview, writes nothing
+engkit install --source https://example.test/team/skills.git --ref <commit> \
+  --skill team-review --target claude --yes
+```
 
-- **Network scope.** Only three commands touch the network, and only for git
-  sources: `list --source`, `install --source` and `update` of a git-sourced
-  entry. They call the system `git` with a shallow fetch, no submodules, hooks
-  disabled, `GIT_TERMINAL_PROMPT=0` and a timeout. Every other command runs
-  locally. No telemetry, no LLM calls.
-- **Preview before remote install.** `install --source` and `update` of a git
-  source require `--yes` after the preview. The preview lists executable files
-  and anything under `scripts/` so you can see them before anything is written.
-- **Command files are never executed.** Scripts bundled in a skill are copied,
-  not run.
-- **No overwrites.** Installs are staged, validated and published without
-  replacing existing files. Modified installs are never updated or removed.
-- **Writes are limited to** the requested commands directory,
-  `.engkit/skills.lock.json`, and `.engkit/memory/` (created by `init` only).
-- **Never modifies** `CLAUDE.md`, `AGENTS.md`, IDE configs or git hooks.
-- Rejects path traversal, absolute paths and symlinks that escape the toolkit
-  root. Symlinked managed destination parents are rejected.
-  Remaining concurrency limits are documented in
-  [docs/adr/0002-installation-safety.md](https://github.com/trustius/engkit/blob/main/docs/adr/0002-installation-safety.md).
+Accepted URLs: `https://`, `ssh://`, `user@host:path`, `file://`. Pin `--ref` to a
+commit to install exactly what you previewed.
+
+**Project memory.** `.engkit/memory/` stays on your machine (it has its own
+`.gitignore`). Do not store secrets there. `engkit init` prints a snippet to add to
+your `CLAUDE.md` or `AGENTS.md`; engkit never edits those files.
+
+## Security
+
+- Only `list --source`, `install --source` and `update` of git sources use the
+  network. They run the system `git` with a shallow fetch, hooks disabled and a
+  timeout. There is no telemetry and no LLM call.
+- Files from a skill are copied, never executed. Remote installs need the preview
+  and `--yes`.
+- engkit writes only the commands directory, `.engkit/skills.lock.json` and
+  `.engkit/memory/`. It rejects path traversal and symlinks that escape the
+  destination. Details:
+  [installation safety](https://github.com/trustius/engkit/blob/main/docs/adr/0002-installation-safety.md).
 
 ## Limitations
 
-- **No live agent checks yet.** Command discovery (`/` and `$` menus), invocation
-  and argument passing have not been checked in a live Claude Code or Codex
-  session. Every row in
-  [docs/manual-smoke-tests.md](https://github.com/trustius/engkit/blob/main/docs/manual-smoke-tests.md)
-  is `pending`.
-- **No eval results.** No eval case has been run. Outcomes are `not-run` in
-  [evals/README.md](https://github.com/trustius/engkit/blob/main/evals/README.md).
-- **Path mappings are partly unverified.** Claude Code paths match the official
-  docs and the installed binary. Codex user scope (`~/.agents/skills`) follows
-  the official docs; whether Codex 0.144.1 reads it is pending a live test. See
-  [docs/compatibility.md](https://github.com/trustius/engkit/blob/main/docs/compatibility.md).
-- **Codex argument passing is pending.** Whether text typed after `$name` reaches
-  the command is not documented (see `docs/compatibility.md`).
-- **No install `--force`.** Conflicting or modified installs must be moved
-  aside by hand.
-- **Git sources only.** Archives are not supported. Git sources need `git` on
-  `PATH`.
-- **Parent-directory race.** Installation does not protect against a hostile
-  concurrent replacement of a parent directory (ADR 0002).
-- **Linux and macOS only.** Windows is not supported.
+- **Not yet checked in live sessions.** Command menus, invocation and argument
+  passing in Claude Code and Codex are untested; see
+  [manual smoke tests](https://github.com/trustius/engkit/blob/main/docs/manual-smoke-tests.md).
+  No eval case has been run
+  ([evals](https://github.com/trustius/engkit/blob/main/evals/README.md)).
+- **Codex paths are partly unverified.** User scope `~/.agents/skills` follows the
+  official docs; whether Codex 0.144.1 reads it is pending. See
+  [compatibility](https://github.com/trustius/engkit/blob/main/docs/compatibility.md).
+- No `--force` install, no archive sources, no Windows support.
 
-## From source / contributing
+## Contributing
 
 ```bash
 git clone https://github.com/trustius/engkit.git && cd engkit
-python3.11 -m venv .venv
-.venv/bin/pip install -e ".[dev]"
+python3.11 -m venv .venv && .venv/bin/pip install -e ".[dev]"
 .venv/bin/python -m unittest discover -s tests -t .
 ```
 
-- Canonical commands live in `src/engkit/skills/<name>/`. Edit them there; do not
-  add per-platform copies.
-- New commands: follow [docs/skill-authoring.md](https://github.com/trustius/engkit/blob/main/docs/skill-authoring.md)
-  and add trigger evals in `evals/triggers/`. Other evals are described in
-  [evals/README.md](https://github.com/trustius/engkit/blob/main/evals/README.md).
-- Platform-specific behavior belongs only in `src/engkit/platforms.py`.
-- Tests create temporary project and home directories. They never touch your
-  real `~/.claude`, `~/.codex`, `~/.agents` or `~/.engkit`.
-- Coding rules and invariants: [CLAUDE.md](https://github.com/trustius/engkit/blob/main/CLAUDE.md).
-  Architecture decisions: [docs/adr/](https://github.com/trustius/engkit/blob/main/docs/adr/).
-
-## Release
-
-Releases follow [RELEASING.md](https://github.com/trustius/engkit/blob/main/RELEASING.md),
-which holds the checklist (tests, lint, `engkit validate`, distribution test,
-compatibility and smoke-test status, version bump in `pyproject.toml` and
-`src/engkit/__init__.py`). Changes are listed in
-[CHANGELOG.md](https://github.com/trustius/engkit/blob/main/CHANGELOG.md).
+Commands live in `src/engkit/skills/<name>/`; see
+[skill authoring](https://github.com/trustius/engkit/blob/main/docs/skill-authoring.md)
+and [CLAUDE.md](https://github.com/trustius/engkit/blob/main/CLAUDE.md) for the rules.
+Releases follow [RELEASING.md](https://github.com/trustius/engkit/blob/main/RELEASING.md);
+changes are listed in the
+[changelog](https://github.com/trustius/engkit/blob/main/CHANGELOG.md).
 
 ## License
 
-MIT (see [LICENSE](https://github.com/trustius/engkit/blob/main/LICENSE)).
+MIT, see [LICENSE](https://github.com/trustius/engkit/blob/main/LICENSE).
