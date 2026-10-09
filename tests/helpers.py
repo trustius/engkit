@@ -65,11 +65,9 @@ class TempDirTest(unittest.TestCase):
         self._tmp.cleanup()
 
     def make_toolkit(self, skills: dict[str, str] | None = None, copy_real: bool = False, name: str = "toolkit") -> Path:
-        """A toolkit root with skills/, packs/, schemas/, templates/, stacks/."""
+        """A toolkit root containing skills/."""
         root = self.tmp / name
         root.mkdir()
-        for name in ("packs", "schemas", "templates", "stacks"):
-            shutil.copytree(REPO / name, root / name)
         if copy_real:
             shutil.copytree(REPO / "skills", root / "skills")
         else:

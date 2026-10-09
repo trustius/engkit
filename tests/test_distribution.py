@@ -14,7 +14,6 @@ import sys
 import unittest
 from pathlib import Path
 
-from tests import fixtures
 from tests.helpers import REPO, TempDirTest
 
 SKIP = os.environ.get("ENGKIT_SKIP_DIST") == "1"
@@ -52,18 +51,10 @@ class DistributionTest(TempDirTest):
         self.assertEqual(len(json.loads(out)["skills"]), 5)
         self.run_cmd([engkit, "validate"], cwd=elsewhere)
 
-        project = self.make_project("consumer", {**fixtures.custom_pack_files(), "widget.build": "targets:\n  test: [x]\n",
-                                                 "tools/cli/go.mod": "module example.test/cli\n"})
+        project = self.make_project("consumer", {"README.md": "consumer\n"})
         self.run_cmd([engkit, "install", "systematic-debugging", "--target", "all", "--project-dir", str(project)], cwd=elsewhere)
         self.assertTrue((project / ".claude/skills/systematic-debugging/references/root-cause-analysis.md").is_file())
         self.assertTrue((project / ".agents/skills/systematic-debugging/SKILL.md").is_file())
-
-        self.run_cmd([engkit, "project", "generate", "--project-dir", str(project), "--target", "all"], cwd=elsewhere)
-        gen = project / ".engkit/generated"
-        manifest = json.loads((gen / "manifest.json").read_text())
-        self.assertEqual({(p["id"], p["origin"]) for p in manifest["packs"]},
-                         {("acme-widget", ".engkit/packs/acme-widget"), ("go", "bundled")})
-        self.assertTrue((gen / "references/acme-widget/conventions.md").is_file())
 
         doctor = json.loads(self.run_cmd([engkit, "doctor", "--project-dir", str(project), "--project-only", "--json"],
                                          cwd=elsewhere).stdout)
@@ -71,4 +62,3 @@ class DistributionTest(TempDirTest):
         self.assertIn("resources: bundled", env_lines)
         self.assertIn(str(venv), env_lines)
         self.assertNotIn(str(REPO), env_lines)
-        self.assertEqual(doctor["generated_status"], "fresh")

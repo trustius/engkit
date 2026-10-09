@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-RESOURCE_DIRS = ("skills", "packs", "schemas", "templates", "stacks")
+RESOURCE_DIRS = ("skills",)
 
 
 class ResourceError(RuntimeError):

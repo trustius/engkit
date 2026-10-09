@@ -1,7 +1,6 @@
 """Build hook: bundle canonical resources into the distribution.
 
-The canonical sources stay at the repository root (skills/, packs/, schemas/,
-templates/, stacks/). At build time they are copied into
+The canonical skills stay at the repository root (skills/). At build time they are copied into
 ``engkit/_resources/`` inside the built package so an installed engkit never
 depends on the caller's working directory or a source checkout.
 """
@@ -12,7 +11,7 @@ from pathlib import Path
 from setuptools import setup
 from setuptools.command.build_py import build_py
 
-RESOURCE_DIRS = ("skills", "packs", "schemas", "templates", "stacks")
+RESOURCE_DIRS = ("skills",)
 IGNORE = shutil.ignore_patterns("__pycache__", "*.pyc", ".DS_Store")
 
 

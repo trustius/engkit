@@ -1,1 +1,0 @@
-- Pack `${pack_id}@${pack_version}`: `${component_root}` is type-checked; confirm whether type checking is part of the documented test command.

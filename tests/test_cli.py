@@ -1,13 +1,12 @@
 import json
 
 from engkit.errors import EXIT_CONFLICT, EXIT_FAILURE, EXIT_OK, EXIT_USAGE
-from tests import fixtures
 from tests.helpers import TempDirTest, resources_at, run_cli, skill_text, snapshot
 
 
 class CliTest(TempDirTest):
     def test_help_and_version(self):
-        for argv in (["--help"], ["install", "--help"], ["project", "generate", "--help"], ["stack", "validate", "--help"]):
+        for argv in (["--help"], ["install", "--help"], ["doctor", "--help"]):
             with self.subTest(argv=argv):
                 code, out, _ = run_cli(argv)
                 self.assertEqual(code, EXIT_OK)
@@ -17,8 +16,7 @@ class CliTest(TempDirTest):
 
     def test_invalid_arguments(self):
         for argv in ([], ["bogus"], ["install", "x"], ["install", "x", "--target", "vim"],
-                     ["install", "x", "--target", "claude", "--global", "--project-dir", "."],
-                     ["project", "generate", "--replace-generated", "--recover-generated"]):
+                     ["install", "x", "--target", "claude", "--global", "--project-dir", "."]):
             with self.subTest(argv=argv):
                 self.assertEqual(run_cli(argv)[0], EXIT_USAGE)
 
@@ -65,68 +63,27 @@ class CliTest(TempDirTest):
         self.assertEqual(run_cli(["install", "nope", "--target", "claude", "--project-dir", str(self.tmp)])[0], EXIT_FAILURE)
         self.assertNotEqual(run_cli(["install", "code-review", "--target", "claude", "--project-dir", str(self.tmp / "missing")])[0], EXIT_OK)
 
-    def test_project_workflow_end_to_end(self):
-        project = self.make_project("mono", fixtures.MONOREPO)
-        before = snapshot(project)
-        code, out, _ = run_cli(["project", "inspect", "--project-dir", str(project), "--json"])
-        self.assertEqual(code, EXIT_OK)
-        data = json.loads(out)
-        self.assertTrue(data["read_only"])
-        self.assertEqual(len(data["profile"]["components"]), 4)
-        self.assertEqual(snapshot(project), before, "inspect writes nothing")
-        code, out, _ = run_cli(["project", "generate", "--project-dir", str(project), "--dry-run"])
-        self.assertEqual((code, snapshot(project)), (EXIT_OK, before))
-        self.assertEqual(run_cli(["project", "generate", "--project-dir", str(project), "--target", "all"])[0], EXIT_OK)
-        code, out, _ = run_cli(["project", "generate", "--project-dir", str(project), "--target", "all", "--json"])
-        self.assertEqual(json.loads(out)["status"], "unchanged")
-        self.assertEqual(run_cli(["project", "generate", "--project-dir", str(project)])[0], EXIT_CONFLICT)
-        code, out, _ = run_cli(["project", "generate", "--project-dir", str(project), "--recover-generated"])
-        self.assertEqual(code, EXIT_OK)
-        self.assertIn("nothing-to-recover", out)
-
-    def test_stack_validate_and_define(self):
-        project = self.make_project("p", fixtures.custom_pack_files())
-        stack = self.tmp / "stack.yaml"
-        stack.write_text("schema_version: 1\nkind: stack\nid: w\ncomponents:\n  - id: svc\n    root: .\n    packs: [acme-widget]\n")
-        code, out, _ = run_cli(["stack", "validate", "--file", str(stack), "--project-dir", str(project)])
-        self.assertEqual(code, EXIT_OK, out)
-        code, out, _ = run_cli(["stack", "validate", "--file", str(stack)], cwd=self.make_project("other"))
-        self.assertEqual(code, EXIT_FAILURE, "stack file directory is not the registry context")
-        self.assertEqual(run_cli(["project", "define", "--stack", str(stack), "--project-dir", str(project)])[0], EXIT_OK)
-        self.assertTrue((project / ".engkit/project.yaml").is_file())
+    def test_removed_project_commands_are_unknown(self):
+        for argv in (["project", "inspect"], ["stack", "validate", "--file", "x.yaml"]):
+            with self.subTest(argv=argv):
+                self.assertEqual(run_cli(argv)[0], EXIT_USAGE)
 
     def test_doctor_is_read_only(self):
-        project = self.make_project("mono", fixtures.MONOREPO)
+        project = self.make_project("p", {"README.md": "x"})
         run_cli(["install", "code-review", "--target", "claude", "--project-dir", str(project)])
-        run_cli(["project", "generate", "--project-dir", str(project)])
         (project / ".claude/skills/code-review/SKILL.md").write_text("edited")
-        (project / ".engkit/generated/PROJECT_CONTEXT.md").write_text("edited")
         before, home_before = snapshot(project), snapshot(self.home)
         code, out, _ = run_cli(["doctor", "--project-dir", str(project), "--json"])
         self.assertEqual((snapshot(project), snapshot(self.home)), (before, home_before))
-        report = json.loads(out)
-        self.assertEqual(report["generated_status"], "modified")
-        text = json.dumps(report)
+        text = json.dumps(json.loads(out))
         self.assertIn("code-review: installed copy differs", text)
         self.assertIn("systematic-debugging: not installed", text)
-        self.assertIn("ambiguous", text)
         self.assertEqual(code, EXIT_OK)
 
-    def test_doctor_reports_incomplete_generation_as_error(self):
-        project = self.make_project("p", fixtures.GO_CLI)
-        run_cli(["project", "generate", "--project-dir", str(project)])
-        (project / ".engkit/generation-transaction.json").write_text("{}")
-        code, out, _ = run_cli(["doctor", "--project-dir", str(project), "--project-only"])
-        self.assertEqual(code, EXIT_FAILURE)
-        self.assertIn("generated context: incomplete", out)
-
     def test_existing_instruction_files_are_never_modified(self):
-        project = self.make_project("p", {**fixtures.GO_CLI, "CLAUDE.md": "# mine\n", "AGENTS.md": "# also mine\n"})
+        files = {"CLAUDE.md": "# mine\n", "AGENTS.md": "# also mine\n"}
+        project = self.make_project("p", files)
         run_cli(["install", "code-review", "--target", "all", "--project-dir", str(project)])
-        run_cli(["project", "generate", "--project-dir", str(project), "--target", "all"])
-        (project / ".engkit/project.yaml").write_text("schema_version: 1\nproject: {name: p}\n")
-        self.assertEqual(run_cli(["project", "generate", "--project-dir", str(project), "--target", "all",
-                                  "--replace-generated"])[0], EXIT_OK)
         run_cli(["doctor", "--project-dir", str(project)])
         self.assertEqual((project / "CLAUDE.md").read_text(), "# mine\n")
         self.assertEqual((project / "AGENTS.md").read_text(), "# also mine\n")

@@ -1,1 +1,0 @@
-- Pack `${pack_id}@${pack_version}`: `${component_root}` is a Cargo crate or workspace; scope commands with `-p` when the workspace has several crates.
