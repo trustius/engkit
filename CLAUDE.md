@@ -39,6 +39,7 @@ Commands:
 
 - `engkit list [--json] [--source URL [--ref REF] [--path DIR]]`
 - `engkit validate [NAME]`
+- `engkit init [--project-dir P | --global] [--target {claude,codex,all}]` (installs all commands for detected platforms, or for `--target`; creates `.engkit/memory/` in project scope only; exits 2 if no platform is found and no `--target` is given; rerun is a no-op)
 - `engkit install NAME --target {claude,codex,all} [--project-dir P | --global]`
 - `engkit install --source URL [--ref REF] [--path DIR] --skill A [--skill B] --target T [--project-dir P | --global] [--yes]`
 - `engkit update [NAME] [--target T] [--project-dir P | --global] [--yes]`
@@ -61,9 +62,12 @@ an MCP integration or an LLM client.
 
 Concerns that stay separate:
 
-1. **Skills** (`src/engkit/skills/<name>/SKILL.md`): stack-neutral workflows. Built-in
-   skills: `bug-investigate`, `change-review`, `change-plan`,
-   `engineering-onboard`, `stack-select`, `memory-save`.
+1. **Skills** (`src/engkit/skills/<name>/SKILL.md`): stack-neutral workflows, exposed
+   as slash commands. Built-in commands: `/engineering-onboard`, `/change-plan`,
+   `/change-review`, `/bug-investigate`, `/stack-select`, `/memory-save`
+   (`$name` in Codex). Old names (`project-discovery`, `implementation-planning`,
+   `systematic-debugging`, `stack-selection`, `project-memory`) were dropped
+   without aliases; 0.1.0 is unreleased.
 2. **Platform adapters** (`platforms.py`): the only place that maps
    `(platform, scope, root)` to destination paths.
 3. **Lockfile** (`skills.lock.json`): what was installed, from where, at which
@@ -77,7 +81,7 @@ difference in `docs/compatibility.md`):
 | Scope | Claude Code | Codex |
 |---|---|---|
 | Project | `<project>/.claude/skills/<name>/` | `<project>/.agents/skills/<name>/` |
-| User (`--global`) | `~/.claude/skills/<name>/` | `~/.agents/skills/<name>/` |
+| User (`--global`) | `~/.claude/skills/<name>/` | `~/.agents/skills/<name>/` (official Codex docs; was `~/.codex/skills`) |
 
 ## Invariants (must not be violated)
 

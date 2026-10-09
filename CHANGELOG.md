@@ -11,11 +11,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Six skills: `bug-investigate`, `change-review`, `change-plan`,
-  `engineering-onboard`, `stack-select` and `memory-save`.
-- CLI commands: `list`, `validate`, `install` (built-in skills and `--source` git
-  URLs, with a preview that requires `--yes`), `update`, `uninstall`, `doctor`,
-  and `memory init` / `memory validate`.
+- Six slash commands, each a skill that runs as `/<name>` in Claude Code and
+  `$<name>` in Codex:
+  - `/engineering-onboard`: map an existing project and record context in `.engkit/memory`.
+  - `/change-plan`: plan a change before coding.
+  - `/change-review`: review a change (uncommitted changes against HEAD by default).
+  - `/bug-investigate`: find the root cause of a bug.
+  - `/stack-select`: compare stacks for a new project or component.
+  - `/memory-save`: record decisions, gotchas and unfinished work, after confirmation.
+- `engkit init [--project-dir PATH | --global] [--target claude|codex|all]`:
+  installs every command for the platforms found on `PATH` (or for `--target`),
+  creates `.engkit/memory/` for project scope, and prints the `CLAUDE.md` /
+  `AGENTS.md` snippet. A rerun changes nothing.
+- CLI commands: `list`, `validate`, `init`, `install` (built-in commands and
+  `--source` git URLs, with a preview that requires `--yes`), `update`,
+  `uninstall`, `doctor`, and `memory validate`.
 - `.engkit/skills.lock.json` lockfile recording installed sources and content hashes.
 - Safety properties: installs are staged and never overwrite existing files;
   skill files (including bundled scripts) are never executed; `update` and

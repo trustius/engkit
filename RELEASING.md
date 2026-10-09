@@ -28,6 +28,8 @@ No API tokens are stored anywhere. Publishing uses Trusted Publishing (OIDC).
 ## Each release
 
 1. **Prepare on `main` with CI green.**
+   - Release blocker until done once: run the Codex `--global` smoke test in
+     `docs/manual-smoke-tests.md` and confirm Codex reads `~/.agents/skills`.
    - Move the items under `## [Unreleased]` in `CHANGELOG.md` to a new
      `## [X.Y.Z] - YYYY-MM-DD` section with today's date.
    - Bump `__version__` in `src/engkit/__init__.py`.

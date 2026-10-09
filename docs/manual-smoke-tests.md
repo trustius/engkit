@@ -43,9 +43,10 @@ Expected: the preview lists the commit, the file list and any executable files,
 and writes nothing. The `--yes` run writes `.agents/skills/change-review/` and
 `.engkit/skills.lock.json`. Codex lists the skill and uses it.
 
-Also confirm whether Codex reads user skills from `~/.codex/skills` or
-`~/.agents/skills` (open question in `compatibility.md`). Do this with
-`--global` only if you accept that it writes to your home directory.
+**Release blocker:** Codex user scope is `~/.agents/skills` (official docs), but
+the 0.144.1 binary only mentions `~/.codex/skills`. Confirm that Codex
+0.144.1 reads it (open question in `compatibility.md`). Do this with `--global`
+only if you accept that it writes to your home directory.
 
 ## 3. Update and uninstall
 
@@ -101,10 +102,61 @@ shasum -c before.sum
 Expected: both files are byte-for-byte unchanged. Only the snippets printed by
 `memory init` are for you to add.
 
-## 6. Cleanup
+## 6. Slash commands (Claude Code)
 
-Delete `/tmp/engkit-smoke/*`. Confirm that `~/.claude/skills`, `~/.codex/skills`,
-`~/.agents/skills` and `~/.engkit` are unchanged compared with before the run.
+Use a copy of a synthetic fixture, so no real project is touched.
+
+```bash
+mkdir -p /tmp/engkit-smoke && rm -rf /tmp/engkit-smoke/slash-claude
+cp -R /absolute/path/to/engkit/evals/discovery/mixed-monorepo/fixture /tmp/engkit-smoke/slash-claude
+cd /tmp/engkit-smoke/slash-claude && git init -q && git add -A \
+  && git -c user.email=smoke@example.test -c user.name=smoke commit -qm "baseline"
+$ENGKIT init --project-dir . --target claude
+claude --version     # record the version
+claude               # then the steps below
+```
+
+1. Type `/`. Expected: `/engineering-onboard`, `/change-plan`, `/change-review`,
+   `/bug-investigate`, `/stack-select` and `/memory-save` are listed. No
+   old name appears.
+2. Run `/engineering-onboard`. Expected: it maps the fixture and writes only
+   under `.engkit/memory/`. Run `git status` before and after. Expected: no
+   other file changed, and `CLAUDE.md` and `AGENTS.md` are not edited.
+3. Change one file in the fixture by hand (`echo "synthetic change" >> <file>`),
+   then run `/change-review`. Expected: it reviews the uncommitted change against
+   HEAD, separates verified fact, hypothesis and assumption, and edits nothing.
+
+Record the Claude Code version, the model, and the result of each step in the
+results table.
+
+## 7. Slash commands (Codex)
+
+Same fixture approach, in a separate copy.
+
+```bash
+rm -rf /tmp/engkit-smoke/slash-codex
+cp -R /absolute/path/to/engkit/evals/discovery/mixed-monorepo/fixture /tmp/engkit-smoke/slash-codex
+cd /tmp/engkit-smoke/slash-codex && git init -q && git add -A \
+  && git -c user.email=smoke@example.test -c user.name=smoke commit -qm "baseline"
+$ENGKIT init --project-dir . --target codex     # installs to .agents/skills/
+codex --version      # record the version
+codex                # then the steps below
+```
+
+1. Type `/skills` or `$`. Expected: the same six commands are listed.
+2. Run `$engineering-onboard`, then `$change-review` after a synthetic edit, as
+   in section 6. Expected results are the same.
+3. Optional: run `$change-review synthetic-argument` and record whether the
+   argument reaches the command. This is the pending question in
+   `compatibility.md`. Record the answer either way.
+
+Record the Codex CLI version, the model, and the result of each step.
+
+## 8. Cleanup
+
+Delete `/tmp/engkit-smoke/*`. Confirm that `~/.claude/skills`, `~/.agents/skills`,
+`~/.codex/skills` (legacy) and `~/.engkit` are unchanged compared with before
+the run.
 
 ## Results
 
@@ -117,4 +169,6 @@ Every outcome is `pending`. No check has been run in a live session yet.
 | 2026-10-09 | 3 | engkit CLI only | macOS | pending | Not run as a manual check. Unit tests use temp directories only; they do not replace this run |
 | 2026-10-09 | 4 | Claude Code 2.1.295 and Codex CLI 0.144.1 | macOS | pending | Not run: needs two fresh agent sessions |
 | 2026-10-09 | 5 | engkit CLI only | macOS | pending | Not run. Agent behavior with the sentinel files is unverified |
-| 2026-10-09 | 6 | engkit CLI only | macOS | pending | Not run |
+| 2026-10-09 | 6 (slash, Claude Code) | Claude Code 2.1.295 (record actual) | macOS | pending | Not run: `/` list, `/engineering-onboard`, `/change-review`. Record model |
+| 2026-10-09 | 7 (slash, Codex) | Codex CLI 0.144.1 (record actual) | macOS | pending | Not run: `/skills`, `$engineering-onboard`, `$change-review`, argument test. Record model |
+| 2026-10-09 | 8 | engkit CLI only | macOS | pending | Not run |
