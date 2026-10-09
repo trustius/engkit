@@ -1,5 +1,19 @@
 # Recorded test results
 
+## 2026-10-09: slash commands C0–C5 (engkit 0.1.0, unreleased)
+
+Environment: macOS (Darwin 25.5.0, arm64), Python 3.11.9, git 2.39.2.
+
+| Command | Result |
+|---|---|
+| `.venv/bin/python -m unittest discover -s tests -t .` | all passed (includes `tests.test_init`, `tests.test_distribution`, `tests.test_workflows`) |
+| `.venv/bin/engkit validate` | `ok: 6 skill(s) valid` (85–89 lines each) |
+| Quickstart from a clean clone: `pip install <clone>` into a fresh venv (PyYAML and setuptools fetched from PyPI), temp HOME, copy of `evals/discovery/mixed-monorepo/fixture` | `engkit init` with no `claude`/`codex` on PATH: exit 2 with a `--target` hint. With a stub `claude` on PATH: 6 commands installed into `.claude/skills/`, `.engkit/memory/` created, snippet and `Next: ... /engineering-onboard` printed, exit 0. Rerun: `already installed 6`, memory kept, exit 0. `engkit doctor`: 0 errors. Fixture tripwire not executed; temp HOME untouched |
+
+Not run: Claude Code `/` listing and running `/engineering-onboard`, `/change-review`; Codex `$name`
+invocation and `~/.agents/skills` discovery (release blocker); trigger and argument evals. All are
+`pending` / `not-run` in `docs/manual-smoke-tests.md` and `evals/triggers/README.md`.
+
 ## 2026-10-09: PyPI packaging R1–R3 (engkit 0.1.0, unreleased)
 
 Environment: macOS (Darwin 25.5.0, arm64), Python 3.11.9 venv, PyYAML 6.0.3, setuptools 84.0.0,
