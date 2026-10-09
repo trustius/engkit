@@ -1,6 +1,6 @@
 # discovery/mixed-monorepo
 
-Skill: project-discovery
+Skill: engineering-onboard
 
 ## Prompt
 

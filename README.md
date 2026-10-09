@@ -42,12 +42,12 @@ Code, so engkit does not use it.
 
 | Skill | Use it when |
 |---|---|
-| `systematic-debugging` | A test fails, an error appears, or behavior is wrong or intermittent |
+| `bug-investigate` | A test fails, an error appears, or behavior is wrong or intermittent |
 | `change-review` | A diff, PR or patch needs review |
-| `implementation-planning` | A feature, migration, refactor or significant fix needs a plan before code |
-| `project-discovery` | You are mapping an unfamiliar or multi-component repository |
-| `stack-selection` | You are choosing a stack for a new project or component |
-| `project-memory` | You want to recall or record project decisions, gotchas and conventions |
+| `change-plan` | A feature, migration, refactor or significant fix needs a plan before code |
+| `engineering-onboard` | You are mapping an unfamiliar or multi-component repository |
+| `stack-select` | You are choosing a stack for a new project or component |
+| `memory-save` | You want to recall or record project decisions, gotchas and conventions |
 
 `change-review` was called `code-review` before. It was renamed because Claude
 Code ships a built-in `code-review` skill (see
@@ -65,9 +65,9 @@ The default scope is the project. `--project-dir` defaults to the current
 directory.
 
 ```bash
-engkit install systematic-debugging --target claude --project-dir ~/code/my-app
+engkit install bug-investigate --target claude --project-dir ~/code/my-app
 engkit install change-review --target codex --project-dir ~/code/my-app
-engkit install implementation-planning --target all --project-dir ~/code/my-app
+engkit install change-plan --target all --project-dir ~/code/my-app
 ```
 
 Use `--global` instead of `--project-dir` to write to your user account
@@ -148,7 +148,7 @@ Installation copies files and never overwrites anything:
 To use a skill, ask for it by name ("use the change-review skill on this
 diff"). Claude Code can also choose a skill from its description. To point
 agents at a skill from your own instruction file, add a line to `CLAUDE.md` or
-`AGENTS.md` yourself, for example: "For bugs, follow the systematic-debugging
+`AGENTS.md` yourself, for example: "For bugs, follow the bug-investigate
 skill." engkit never edits these files.
 
 ## Security model

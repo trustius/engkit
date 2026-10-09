@@ -11,8 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Six skills: `systematic-debugging`, `change-review`, `implementation-planning`,
-  `project-discovery`, `stack-selection` and `project-memory`.
+- Six skills: `bug-investigate`, `change-review`, `change-plan`,
+  `engineering-onboard`, `stack-select` and `memory-save`.
 - CLI commands: `list`, `validate`, `install` (built-in skills and `--source` git
   URLs, with a preview that requires `--yes`), `update`, `uninstall`, `doctor`,
   and `memory init` / `memory validate`.

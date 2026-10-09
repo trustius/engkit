@@ -1,5 +1,5 @@
 ---
-name: stack-selection
+name: stack-select
 description: Turn product requirements and constraints into two or three viable technology-stack options with trade-offs and a test strategy, and optionally record the choice as a project memory decision. Use when starting a new project or component, or when asked to compare stacks against stated requirements.
 ---
 
@@ -9,9 +9,9 @@ description: Turn product requirements and constraints into two or three viable 
 - Starting a new project or a component that has no established stack.
 - The user asks to compare stacks for stated requirements.
 - An existing project has requirements its current stack demonstrably cannot meet.
-- Out of scope: describing an existing stack (use `project-discovery`); migrating a working
+- Out of scope: describing an existing stack (use `engineering-onboard`); migrating a working
   project without a demanding requirement; scaffolding, installing, provisioning or deploying;
-  picking a library for one scoped task (use `implementation-planning`).
+  picking a library for one scoped task (use `change-plan`).
 
 ## When to ask
 - Requirements conflict (for example fully managed hosting vs on-premise only): name the
@@ -33,7 +33,7 @@ explicit, plus a test strategy.
 - Project memory (optional): if `.engkit/memory/INDEX.md` exists in the target project, read
   it and open only entries relevant to the task. Verify each against current code before
   relying on it, and report which entries were used. If absent, proceed normally. Write memory
-  only with the user's consent, following the project-memory format.
+  only with the user's consent, following the memory-save format.
 
 ## Workflow
 1. List the stated requirements and constraints, marking each hard or soft.

@@ -1,4 +1,4 @@
-# Trigger evals: project-memory
+# Trigger evals: memory-save
 
 Synthetic prompts. Run them as described in README.md.
 

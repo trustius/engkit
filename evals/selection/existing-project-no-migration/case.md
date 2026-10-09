@@ -1,6 +1,6 @@
 # selection/existing-project-no-migration
 
-Skill: stack-selection
+Skill: stack-select
 
 ## Prompt
 

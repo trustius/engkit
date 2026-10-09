@@ -1,6 +1,6 @@
 # debugging/duplicate-job-processing
 
-Skill: systematic-debugging
+Skill: bug-investigate
 
 ## Prompt
 

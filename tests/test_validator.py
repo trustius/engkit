@@ -102,12 +102,12 @@ class ValidatorTest(TempDirTest):
 
 class CanonicalSkillsTest(TempDirTest):
     EXPECTED = {
-        "systematic-debugging",
+        "bug-investigate",
         "change-review",
-        "implementation-planning",
-        "project-discovery",
-        "stack-selection",
-        "project-memory",
+        "change-plan",
+        "engineering-onboard",
+        "stack-select",
+        "memory-save",
     }
     REMOVED_FEATURES = (
         "PROJECT_CONTEXT",
@@ -132,7 +132,7 @@ class CanonicalSkillsTest(TempDirTest):
                     "untested assumption",
                 ):
                     self.assertIn(phrase, text)
-                if skill_name != "project-memory":
+                if skill_name != "memory-save":
                     self.assertIn(".engkit/memory/INDEX.md", text)
 
     def test_skills_are_short_and_free_of_removed_features(self):

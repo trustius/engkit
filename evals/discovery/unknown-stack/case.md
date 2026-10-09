@@ -1,6 +1,6 @@
 # discovery/unknown-stack
 
-Skill: project-discovery
+Skill: engineering-onboard
 
 ## Prompt
 

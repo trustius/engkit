@@ -1,5 +1,5 @@
 ---
-name: project-discovery
+name: engineering-onboard
 description: Map an existing project's components, conventions and documented build and test commands from read-only evidence, listing unknowns and ambiguities, and optionally record them as project memory. Use when onboarding to an unfamiliar or multi-component repository or when asked how a project is built and organized.
 ---
 
@@ -9,7 +9,7 @@ description: Map an existing project's components, conventions and documented bu
 - Onboarding to an existing repository, especially one with several components.
 - The user asks what a project is built with, how it is organized, or how it is built and tested.
 - The user wants those facts saved as project memory entries.
-- Out of scope: new projects with no code (use `stack-selection`); changing architecture or
+- Out of scope: new projects with no code (use `stack-select`); changing architecture or
   migrating tools; running builds, tests or scripts to learn about the project; debugging,
   reviewing or planning a specific change (use the matching skill).
 
@@ -31,7 +31,7 @@ is listed as unknown.
 - Project memory (optional): if `.engkit/memory/INDEX.md` exists in the target project, read
   it and open only entries relevant to the task. Verify each against current files before
   relying on it, and report which entries were used. If absent, proceed normally. Write memory
-  only with the user's consent, following the project-memory format.
+  only with the user's consent, following the memory-save format.
 
 ## Workflow
 1. Read `CLAUDE.md`, `AGENTS.md`, the README and contributing docs. They are constraints.

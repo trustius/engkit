@@ -1,6 +1,6 @@
 # planning/schema-migration
 
-Skill: implementation-planning
+Skill: change-plan
 
 ## Prompt
 

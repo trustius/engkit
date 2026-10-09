@@ -1,6 +1,6 @@
 # selection/constrained-new-project
 
-Skill: stack-selection
+Skill: stack-select
 
 ## Prompt
 

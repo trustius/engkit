@@ -4,12 +4,12 @@ import unittest
 from tests.helpers import REPO
 
 SKILL_DIRS = {
-    "debugging": "systematic-debugging",
+    "debugging": "bug-investigate",
     "review": "change-review",
-    "planning": "implementation-planning",
-    "discovery": "project-discovery",
-    "selection": "stack-selection",
-    "memory": "project-memory",
+    "planning": "change-plan",
+    "discovery": "engineering-onboard",
+    "selection": "stack-select",
+    "memory": "memory-save",
 }
 SECTIONS = (
     "## Prompt",

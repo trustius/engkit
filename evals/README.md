@@ -17,9 +17,9 @@ evals/
     results/                completed result files, one per run (created when runs happen)
 ```
 
-Skill directories: `debugging/` (systematic-debugging), `review/` (change-review),
-`planning/` (implementation-planning), `discovery/` (project-discovery),
-`selection/` (stack-selection), `memory/` (project-memory).
+Skill directories: `debugging/` (bug-investigate), `review/` (change-review),
+`planning/` (change-plan), `discovery/` (engineering-onboard),
+`selection/` (stack-select), `memory/` (memory-save).
 
 ## Fixture rules
 
@@ -71,7 +71,7 @@ Each dimension is scored 0, 1 or 2. Cases list which dimensions apply.
 | Regression coverage | No test or verification proposed | Generic "add tests" without the triggering condition | Concrete test that would fail before the fix and pass after, plus adjacent risks named |
 | Unnecessary work | Unrequested edits, rewrites, migrations, or executing project commands without need | Some scope creep or noise (style nits, broad refactors) | Focused on the task; proposes rather than performs changes unless asked |
 
-Additional dimensions for **stack-selection** cases:
+Additional dimensions for **stack-select** cases:
 
 | Dimension | 0 | 1 | 2 |
 |---|---|---|---|
@@ -109,18 +109,18 @@ No agent runs have been performed yet.
 
 | Case | Skill | Claude Code baseline | Claude Code skill | Codex baseline | Codex skill |
 |---|---|---|---|---|---|
-| debugging/cookie-domain-mismatch | systematic-debugging | not-run | not-run | not-run | not-run |
-| debugging/duplicate-job-processing | systematic-debugging | not-run | not-run | not-run | not-run |
+| debugging/cookie-domain-mismatch | bug-investigate | not-run | not-run | not-run | not-run |
+| debugging/duplicate-job-processing | bug-investigate | not-run | not-run | not-run | not-run |
 | review/lost-update-race | change-review | not-run | not-run | not-run | not-run |
 | review/n-plus-one-misleading-tests | change-review | not-run | not-run | not-run | not-run |
-| planning/api-integration-idempotency | implementation-planning | not-run | not-run | not-run | not-run |
-| planning/schema-migration | implementation-planning | not-run | not-run | not-run | not-run |
-| discovery/mixed-monorepo | project-discovery | not-run | not-run | not-run | not-run |
-| discovery/unknown-stack | project-discovery | not-run | not-run | not-run | not-run |
-| selection/constrained-new-project | stack-selection | not-run | not-run | not-run | not-run |
-| selection/existing-project-no-migration | stack-selection | not-run | not-run | not-run | not-run |
-| selection/conflicting-requirements | stack-selection | not-run | not-run | not-run | not-run |
-| memory/recall-prior-decision | project-memory | not-run | not-run | not-run | not-run |
-| memory/no-secrets | project-memory | not-run | not-run | not-run | not-run |
+| planning/api-integration-idempotency | change-plan | not-run | not-run | not-run | not-run |
+| planning/schema-migration | change-plan | not-run | not-run | not-run | not-run |
+| discovery/mixed-monorepo | engineering-onboard | not-run | not-run | not-run | not-run |
+| discovery/unknown-stack | engineering-onboard | not-run | not-run | not-run | not-run |
+| selection/constrained-new-project | stack-select | not-run | not-run | not-run | not-run |
+| selection/existing-project-no-migration | stack-select | not-run | not-run | not-run | not-run |
+| selection/conflicting-requirements | stack-select | not-run | not-run | not-run | not-run |
+| memory/recall-prior-decision | memory-save | not-run | not-run | not-run | not-run |
+| memory/no-secrets | memory-save | not-run | not-run | not-run | not-run |
 
 Trigger evals are in `triggers/README.md`. Update this table only from completed result files.

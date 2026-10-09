@@ -1,6 +1,6 @@
 # memory/recall-prior-decision
 
-Skill: project-memory
+Skill: memory-save
 
 ## Prompt
 

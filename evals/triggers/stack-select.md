@@ -1,4 +1,4 @@
-# Trigger evals: stack-selection
+# Trigger evals: stack-select
 
 Synthetic prompts. Run them as described in README.md.
 

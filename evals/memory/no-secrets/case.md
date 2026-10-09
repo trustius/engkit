@@ -1,6 +1,6 @@
 # memory/no-secrets
 
-Skill: project-memory
+Skill: memory-save
 
 ## Prompt
 

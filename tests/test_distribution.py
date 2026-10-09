@@ -106,11 +106,11 @@ class DistributionTest(TempDirTest):
         self.assertEqual(len(listing["skills"]), 6)
         run_command([self.engkit, "validate"], cwd=elsewhere)
         project = self.make_project("consumer", {"README.md": "consumer\n"})
-        install = [self.engkit, "install", "systematic-debugging", "--target", "all"]
+        install = [self.engkit, "install", "bug-investigate", "--target", "all"]
         run_command([*install, "--project-dir", str(project)], cwd=elsewhere)
-        reference = ".claude/skills/systematic-debugging/references/root-cause-analysis.md"
+        reference = ".claude/skills/bug-investigate/references/root-cause-analysis.md"
         self.assertTrue((project / reference).is_file())
-        self.assertTrue((project / ".agents/skills/systematic-debugging/SKILL.md").is_file())
+        self.assertTrue((project / ".agents/skills/bug-investigate/SKILL.md").is_file())
         doctor_command = [self.engkit, "doctor", "--project-dir", str(project), "--project-only"]
         doctor = json.loads(run_command([*doctor_command, "--json"], cwd=elsewhere).stdout)
         environment_lines = " ".join(item["message"] for item in doctor["sections"][0]["items"])

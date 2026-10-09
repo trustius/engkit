@@ -62,8 +62,8 @@ an MCP integration or an LLM client.
 Concerns that stay separate:
 
 1. **Skills** (`src/engkit/skills/<name>/SKILL.md`): stack-neutral workflows. Built-in
-   skills: `systematic-debugging`, `change-review`, `implementation-planning`,
-   `project-discovery`, `stack-selection`, `project-memory`.
+   skills: `bug-investigate`, `change-review`, `change-plan`,
+   `engineering-onboard`, `stack-select`, `memory-save`.
 2. **Platform adapters** (`platforms.py`): the only place that maps
    `(platform, scope, root)` to destination paths.
 3. **Lockfile** (`skills.lock.json`): what was installed, from where, at which

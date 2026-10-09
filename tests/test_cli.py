@@ -30,7 +30,7 @@ class CliTest(TempDirTest):
     def test_list_and_validate_real_catalog(self):
         code, out, _ = run_cli(["list"])
         self.assertEqual(code, EXIT_OK)
-        self.assertIn("systematic-debugging", out)
+        self.assertIn("bug-investigate", out)
         code, out, _ = run_cli(["list", "--json"])
         self.assertEqual(len(json.loads(out)["skills"]), 6)
         self.assertEqual(run_cli(["validate"])[0], EXIT_OK)
@@ -65,10 +65,10 @@ class CliTest(TempDirTest):
         self.assertIn("conflict", err)
 
     def test_install_global_uses_temp_home(self):
-        code, _, _ = run_cli(["install", "implementation-planning", "--target", "all", "--global"])
+        code, _, _ = run_cli(["install", "change-plan", "--target", "all", "--global"])
         self.assertEqual(code, EXIT_OK)
-        self.assertTrue((self.home / ".claude/skills/implementation-planning/SKILL.md").is_file())
-        self.assertTrue((self.home / ".agents/skills/implementation-planning/SKILL.md").is_file())
+        self.assertTrue((self.home / ".claude/skills/change-plan/SKILL.md").is_file())
+        self.assertTrue((self.home / ".agents/skills/change-plan/SKILL.md").is_file())
 
     def test_install_unknown_skill_and_missing_project(self):
         self.assertEqual(
@@ -103,7 +103,7 @@ class CliTest(TempDirTest):
         self.assertEqual((snapshot(project), snapshot(self.home)), (before, home_before))
         text = json.dumps(json.loads(out))
         self.assertIn("change-review: installed copy differs", text)
-        self.assertIn("systematic-debugging: not installed", text)
+        self.assertIn("bug-investigate: not installed", text)
         self.assertEqual(code, EXIT_OK)
 
     def test_existing_instruction_files_are_never_modified(self):

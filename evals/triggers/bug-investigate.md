@@ -1,4 +1,4 @@
-# Trigger evals: systematic-debugging
+# Trigger evals: bug-investigate
 
 Synthetic prompts. Run them as described in README.md.
 

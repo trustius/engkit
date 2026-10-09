@@ -1,5 +1,5 @@
 ---
-name: systematic-debugging
+name: bug-investigate
 description: Investigate a software bug and find its root cause from code, reproduction, logs and tests, labelling each claim as verified fact, plausible hypothesis or untested assumption. Use when a test fails, an error or exception appears, behavior is wrong, a production error is reported, or a failure is intermittent.
 ---
 
@@ -10,7 +10,7 @@ description: Investigate a software bug and find its root cause from code, repro
 - A production error needs a root-cause explanation (investigation only).
 - A failure is intermittent, environment-dependent or appeared after a change.
 - Out of scope: reviewing a diff with no failure (use `change-review`); designing a feature
-  (use `implementation-planning`); tuning performance with no defect; cleanup; operating on
+  (use `change-plan`); tuning performance with no defect; cleanup; operating on
   production (restart, redeploy, migrate, alter data).
 
 ## When to ask
@@ -31,7 +31,7 @@ report honestly what was and was not verified.
 - Project memory (optional): if `.engkit/memory/INDEX.md` exists in the target project, read
   it and open only entries relevant to the task. Verify each against current code before
   relying on it, and report which entries were used. If absent, proceed normally. Write memory
-  only if the user's task allows it, following the project-memory format.
+  only if the user's task allows it, following the memory-save format.
 
 ## Workflow
 1. Read the user's symptom and write expected vs actual behavior in one sentence each.

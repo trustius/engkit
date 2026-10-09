@@ -1,6 +1,6 @@
 # debugging/cookie-domain-mismatch
 
-Skill: systematic-debugging
+Skill: bug-investigate
 
 ## Prompt
 

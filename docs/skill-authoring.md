@@ -34,7 +34,7 @@ never commit per-platform copies. Platform differences belong in
   Open only the entries that look relevant. Verify each entry against current
   code before relying on it. If the file does not exist, continue without it.
   Do not create or edit memory unless the skill's workflow says so; memory
-  writes go through `project-memory`.
+  writes go through `memory-save`.
 - **No implicit authority.** No skill authorizes edits, production access or
   destructive actions. A documented command is neither permission to run it nor
   evidence that it passes.

@@ -1,5 +1,5 @@
 ---
-name: implementation-planning
+name: change-plan
 description: Produce an evidence-based implementation plan with scope, affected paths, dependency-ordered slices, a test matrix, risks and acceptance criteria, without implementing anything. Use when a feature, integration, refactor, migration or significant fix needs planning before code is written.
 ---
 
@@ -9,8 +9,8 @@ description: Produce an evidence-based implementation plan with scope, affected 
 - A feature, integration, refactor, migration or significant fix needs a plan before coding.
 - The user asks how to approach a change, what it touches, or how to split it into steps.
 - Out of scope: small obvious changes (say so and stop); finding a failure's cause (use
-  `systematic-debugging`); reviewing a diff (use `change-review`); choosing a stack for a new
-  project (use `stack-selection`); writing the code.
+  `bug-investigate`); reviewing a diff (use `change-review`); choosing a stack for a new
+  project (use `stack-select`); writing the code.
 
 ## When to ask
 - The goal or an acceptance criterion is ambiguous and two readings give different plans.
@@ -30,7 +30,7 @@ verifiable slices, with testable acceptance criteria, risks and open questions.
 - Project memory (optional): if `.engkit/memory/INDEX.md` exists in the target project, read
   it and open only entries relevant to the paths involved. Verify each against current code
   before relying on it, and report which entries were used. If absent, proceed normally. Write
-  memory only if the user's task allows it, following the project-memory format.
+  memory only if the user's task allows it, following the memory-save format.
 
 ## Workflow
 1. Restate the goal in one sentence and list the requirements as testable statements. Mark

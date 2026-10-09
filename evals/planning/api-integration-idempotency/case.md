@@ -1,6 +1,6 @@
 # planning/api-integration-idempotency
 
-Skill: implementation-planning
+Skill: change-plan
 
 ## Prompt
 

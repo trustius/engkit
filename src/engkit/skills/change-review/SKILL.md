@@ -8,8 +8,8 @@ description: Review a code change for correctness, security, data integrity, con
 ## When to use
 - A diff, pull request, patch, commit range or list of changed files is given for review.
 - The user explicitly asks for a review of a specific change.
-- Out of scope: debugging a failure with no change under review (use `systematic-debugging`);
-  planning new work (use `implementation-planning`); whole-codebase audits; style-only passes;
+- Out of scope: debugging a failure with no change under review (use `bug-investigate`);
+  planning new work (use `change-plan`); whole-codebase audits; style-only passes;
   posting comments, approving, merging or pushing.
 
 ## When to ask
@@ -30,7 +30,7 @@ say plainly when no actionable finding is confirmed.
 - Project memory (optional): if `.engkit/memory/INDEX.md` exists in the target project, read
   it and open only entries relevant to the changed paths. Verify each against current code
   before relying on it, and report which entries were used. If absent, proceed normally. Write
-  memory only if the user's task allows it, following the project-memory format.
+  memory only if the user's task allows it, following the memory-save format.
 
 ## Workflow
 1. Read the full change and write its intent in one sentence.

@@ -1,4 +1,4 @@
-# Trigger evals: project-discovery
+# Trigger evals: engineering-onboard
 
 Synthetic prompts. Run them as described in README.md.
 

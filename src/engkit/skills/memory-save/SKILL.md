@@ -1,9 +1,9 @@
 ---
-name: project-memory
+name: memory-save
 description: Read and maintain a small local project memory in .engkit/memory/ so decisions, gotchas, conventions and unfinished task state survive between sessions and are shared by Claude Code and Codex. Use at the start of a task to recall relevant prior context, and at the end to record only what cannot be derived from code or git. Not for secrets, code summaries or task logs.
 ---
 
-# project-memory
+# memory-save
 
 ## When to use
 - At task start in a project that has `.engkit/memory/INDEX.md`: recall prior decisions and gotchas.

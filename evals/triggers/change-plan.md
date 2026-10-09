@@ -1,4 +1,4 @@
-# Trigger evals: implementation-planning
+# Trigger evals: change-plan
 
 Synthetic prompts. Run them as described in README.md.
 

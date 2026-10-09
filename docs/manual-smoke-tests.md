@@ -13,10 +13,10 @@ and use it below.
 
 ```bash
 mkdir -p /tmp/engkit-smoke/claude && cd /tmp/engkit-smoke/claude && git init -q
-$ENGKIT install systematic-debugging --target claude --project-dir .
+$ENGKIT install bug-investigate --target claude --project-dir .
 $ENGKIT doctor --target claude --project-dir . --project-only
 claude    # then ask: "What skills are available?" and
-          # "Use the systematic-debugging skill: tests/test_x fails with KeyError 'id' (synthetic)."
+          # "Use the bug-investigate skill: tests/test_x fails with KeyError 'id' (synthetic)."
 ```
 
 Expected: the skill is listed, and its answer separates verified fact,
@@ -76,7 +76,7 @@ $ENGKIT doctor --target all --project-dir .
 ```
 
 Create one synthetic entry in `.engkit/memory/` by hand (or ask the agent to
-record one with `project-memory`), then update `INDEX.md` to list it and run
+record one with `memory-save`), then update `INDEX.md` to list it and run
 `memory validate` again. In a fresh Claude Code session and a fresh Codex
 session, ask: "What does the project memory say about the test runner?"
 

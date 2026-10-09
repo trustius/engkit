@@ -1,6 +1,6 @@
 # selection/conflicting-requirements
 
-Skill: stack-selection
+Skill: stack-select
 
 ## Prompt
 
