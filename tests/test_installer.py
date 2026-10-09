@@ -47,12 +47,12 @@ class InstallerTest(TempDirTest):
         results = installer.install(self.toolkit, "demo", "all", scope="user", home_dir=self.home)
         self.assertTrue(all(r.status == "installed" for r in results))
         self.assert_copy(self.home / ".claude/skills/demo")
-        self.assert_copy(self.home / ".codex/skills/demo")
+        self.assert_copy(self.home / ".agents/skills/demo")
         self.assertFalse((self.project / ".claude").exists())
 
     def test_global_defaults_to_home_env(self):
         results = installer.install(self.toolkit, "demo", "codex", scope="user")
-        self.assertEqual(results[0].destination, self.home / ".codex/skills/demo")
+        self.assertEqual(results[0].destination, self.home / ".agents/skills/demo")
 
     def test_repeat_install_is_idempotent(self):
         self.install()
@@ -425,11 +425,11 @@ class LockedLifecycleTest(TempDirTest):
         result = installer.update(self.toolkit, [], "all", scope="user")[0]
         self.assertEqual(result.status, "updated")
         self.assertIn("demo", lockfile.read(self.home))
-        self.assertTrue((self.home / ".codex/skills/demo/extra.md").is_file())
+        self.assertTrue((self.home / ".agents/skills/demo/extra.md").is_file())
         self.assertEqual(
             installer.uninstall("demo", "codex", scope="user")[0].status, "uninstalled"
         )
-        self.assertFalse((self.home / ".codex/skills/demo").exists())
+        self.assertFalse((self.home / ".agents/skills/demo").exists())
 
     def test_uninstall_pristine_removes_and_drops_lock_entry(self):
         self.install("all")

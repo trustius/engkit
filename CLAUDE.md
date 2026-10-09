@@ -77,7 +77,7 @@ difference in `docs/compatibility.md`):
 | Scope | Claude Code | Codex |
 |---|---|---|
 | Project | `<project>/.claude/skills/<name>/` | `<project>/.agents/skills/<name>/` |
-| User (`--global`) | `~/.claude/skills/<name>/` | `~/.codex/skills/<name>/` |
+| User (`--global`) | `~/.claude/skills/<name>/` | `~/.agents/skills/<name>/` |
 
 ## Invariants (must not be violated)
 

@@ -68,7 +68,7 @@ class CliTest(TempDirTest):
         code, _, _ = run_cli(["install", "implementation-planning", "--target", "all", "--global"])
         self.assertEqual(code, EXIT_OK)
         self.assertTrue((self.home / ".claude/skills/implementation-planning/SKILL.md").is_file())
-        self.assertTrue((self.home / ".codex/skills/implementation-planning/SKILL.md").is_file())
+        self.assertTrue((self.home / ".agents/skills/implementation-planning/SKILL.md").is_file())
 
     def test_install_unknown_skill_and_missing_project(self):
         self.assertEqual(

@@ -11,7 +11,7 @@ class PlatformTest(unittest.TestCase):
             ("claude", "project", proj): "/p/.claude/skills/x",
             ("codex", "project", proj): "/p/.agents/skills/x",
             ("claude", "user", home): "/h/.claude/skills/x",
-            ("codex", "user", home): "/h/.codex/skills/x",
+            ("codex", "user", home): "/h/.agents/skills/x",
         }
         for (pid, scope, root), expected in cases.items():
             with self.subTest(pid=pid, scope=scope):

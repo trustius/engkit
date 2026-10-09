@@ -24,33 +24,57 @@ _REGISTRY = {
         "claude", "Claude Code", "claude", (".claude", "skills"), (".claude", "skills"), "CLAUDE.md"
     ),
     "codex": Platform(
-        "codex", "Codex", "codex", (".agents", "skills"), (".codex", "skills"), "AGENTS.md"
+        "codex", "Codex", "codex", (".agents", "skills"), (".agents", "skills"), "AGENTS.md"
     ),
 }
 
 
-# Names observed in the Claude Code 2.1.295 skill listing and the codex 0.144.1 binary
-# (2026-10-09). Neither list is documented as complete, so it can lag behind the platforms.
-# A canonical skill with one of these names may be shadowed. See docs/compatibility.md.
+# Names a canonical skill must not use. Claude: bundled skills observed in Claude Code 2.1.295
+# sessions plus built-in slash commands from the official docs (2026-10-09). Codex: system
+# skills named in the official docs or seen in the codex 0.144.1 binary (`plan` is docs-only).
+# See docs/compatibility.md.
 BUILTIN_SKILL_NAMES = {
     "claude": frozenset(
         {
-            "code-review",
-            "security-review",
-            "init",
-            "simplify",
-            "loop",
-            "schedule",
-            "run",
-            "update-config",
-            "keybindings-help",
-            "fewer-permission-prompts",
+            "artifact-capabilities",
+            "artifact-diagramming",
+            "batch",
+            "bug",
             "claude-api",
+            "claude-in-chrome",
+            "code-review",
+            "compact",
+            "config",
+            "context",
+            "dataviz",
+            "debug",
+            "design",
+            "design-sync",
+            "doctor",
+            "fewer-permission-prompts",
+            "help",
+            "init",
+            "keybindings-help",
+            "loop",
+            "memory",
+            "plan",
             "plugin-authoring",
+            "review",
+            "run",
+            "run-skill-generator",
+            "schedule",
+            "security-review",
+            "simplify",
+            "skills",
+            "slides",
+            "update-config",
+            "verify",
             "workflow-authoring",
         }
     ),
-    "codex": frozenset({"openai-docs"}),
+    "codex": frozenset(
+        {"imagegen", "openai-docs", "plan", "plugin-creator", "skill-creator", "skill-installer"}
+    ),
 }
 
 

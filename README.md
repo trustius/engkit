@@ -71,7 +71,7 @@ engkit install implementation-planning --target all --project-dir ~/code/my-app
 ```
 
 Use `--global` instead of `--project-dir` to write to your user account
-(`~/.claude/skills` and `~/.codex/skills`).
+(`~/.claude/skills` and `~/.agents/skills`).
 
 ### Install skills from a git source
 
@@ -137,7 +137,7 @@ project memory status line.
 | Target | Project scope | User scope (`--global`) |
 |---|---|---|
 | `claude` | `<project>/.claude/skills/<name>/` | `~/.claude/skills/<name>/` |
-| `codex` | `<project>/.agents/skills/<name>/` | `~/.codex/skills/<name>/` |
+| `codex` | `<project>/.agents/skills/<name>/` | `~/.agents/skills/<name>/` |
 
 Installation copies files and never overwrites anything:
 
