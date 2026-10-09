@@ -31,6 +31,11 @@ BAD_ENTRIES = (
     ("demo", {"content_sha256": "G" * 64}),
     ("demo", {"targets": ["vim"]}),
     ("demo", {"targets": "claude"}),
+    ("demo", {"target_digests": []}),
+    ("demo", {"target_digests": {"vim": "a" * 64}}),
+    ("demo", {"target_digests": {"codex": "a" * 64}}),
+    ("demo", {"target_digests": {"claude": "short"}}),
+    ("demo", {"target_digests": {"claude": 5}}),
 )
 
 
@@ -93,6 +98,14 @@ class LockfileTest(TempDirTest):
         entry = {**GOOD, "ref": "main", "path": "skills", "commit": "c" * 40}
         self.path.write_text(json.dumps({"lock_version": 1, "skills": {"demo": entry}}))
         self.assertEqual(lockfile.read(self.root)["demo"], entry)
+
+    def test_target_digests_are_accepted_and_expected_digest_prefers_them(self):
+        self.path.parent.mkdir()
+        entry = {**GOOD, "targets": ["claude", "codex"], "target_digests": {"claude": "b" * 64}}
+        self.path.write_text(json.dumps({"lock_version": 1, "skills": {"demo": entry}}))
+        loaded = lockfile.read(self.root)["demo"]
+        self.assertEqual(lockfile.expected_digest(loaded, "claude"), "b" * 64)
+        self.assertEqual(lockfile.expected_digest(loaded, "codex"), "a" * 64)
 
     def test_symlinked_lock_file_is_refused(self):
         target = self.tmp / "victim.lock"

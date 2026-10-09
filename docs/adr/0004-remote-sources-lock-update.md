@@ -85,7 +85,14 @@ use the network. `validate`, `doctor`, `memory`, built-in `install` and
   ```
 
   - `content_sha256` is the sha256 of the sorted `path\0filehash\n` lines of
-    the skill tree.
+    the skill tree. A file hash carries a `+x` suffix when the executable bit
+    is set (no other mode bits, to avoid umask noise).
+  - Optional `target_digests` maps a target id to the digest of that target's
+    copy. It exists only after a partial update (some targets updated, others
+    not) and overrides `content_sha256` for that target in the pristine checks
+    of update and uninstall. Keys must be a subset of `targets`, values 64 hex
+    digits. It is removed once all targets are current or a target is
+    uninstalled.
   - Built-in entries have `ref` and `commit` set to null; their content hash
     is enough to tell whether an upgrade is available.
 - **Writes:** read-modify-write under an exclusive `fcntl.flock` on

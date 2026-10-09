@@ -82,17 +82,21 @@ def entries(root: Path):
 
 
 def _file_digest(path: Path) -> str:
-    """Return sha256 of a regular file, "" for a directory; refuse everything else."""
+    """Return sha256 of a regular file, "" for a directory; refuse everything else.
+
+    Only the executable bit is part of the digest; other mode bits vary with the umask.
+    """
     mode = os.lstat(path).st_mode
     if stat.S_ISREG(mode):
-        return sha256_file(path)
+        marker = "+x" if mode & 0o111 else ""
+        return sha256_file(path) + marker
     if stat.S_ISDIR(mode):
         return ""
     raise UnsafePathError(f"refusing symlink or special file: {path}")
 
 
 def tree_snapshot(root: Path) -> dict[str, str]:
-    """Map relative POSIX path to sha256 of every regular file below ``root``.
+    """Map relative POSIX path to sha256 (plus "+x" if executable) of every regular file.
 
     Empty directories are recorded as "<dir>"; symlinks and special files raise UnsafePathError.
     """

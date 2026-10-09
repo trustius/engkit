@@ -38,6 +38,11 @@ STATUS_EXIT = {
 }
 BUILTIN = {"source": "builtin", "ref": None, "path": None, "commit": None}
 MODIFIED = (CONFLICT, "installed copy was modified; left untouched")
+MISSING = (
+    ERROR,
+    "installed copy is missing; uninstall it to drop the lock entry, then reinstall",
+)
+GONE_DETAIL = "installed copy was already gone; dropped from the lock"
 NOT_MANAGED_DETAIL = "no lock entry for this target; engkit did not install it"
 
 STAGE_MARKER = ".engkit-stage-"
@@ -201,8 +206,18 @@ def _record(root: Path, name: str, fresh: dict, done: list[str]) -> str:
             return clash
         entry = skills.get(name) or fresh
         entry["targets"] = sorted({*entry["targets"], *done})
+        _forget_digests(entry, done)
         skills[name] = entry
     return ""
+
+
+def _forget_digests(entry: dict, platform_ids) -> None:
+    """Drop per-target digests; those targets fall back to the entry-wide digest."""
+    digests = entry.get("target_digests", {})
+    for platform_id in platform_ids:
+        digests.pop(platform_id, None)
+    if not digests:
+        entry.pop("target_digests", None)
 
 
 def _install_one(job: _Job, destination: platforms.Destination) -> InstallResult:
@@ -316,14 +331,27 @@ def _tree_digest(path: Path) -> str:
     return lockfile.digest(fsutil.tree_snapshot(path))
 
 
+def _is_present(path: Path) -> bool:
+    """Like os.path.lexists, but only a vanished path is absent; other errors propagate."""
+    try:
+        os.lstat(path)
+    except (FileNotFoundError, NotADirectoryError):
+        return False
+    return True
+
+
 def _installed_digest(destination: platforms.Destination, name: str):
     """Return (digest, refusal); the refusal is (status, detail) when the copy is unusable."""
     path = destination.skill_path(name)
     problems = fsutil.check_no_symlinks(destination.root, destination.parts)
     if problems:
         return "", (ERROR, f"unsafe destination: {problems[0]}")
-    if not os.path.lexists(path):
-        return "", (ERROR, "installed copy is missing")
+    try:
+        present = _is_present(path)
+    except OSError as exc:
+        return "", (ERROR, f"cannot inspect installed copy: {exc}")
+    if not present:
+        return "", MISSING
     snapshot, refusal = _read_tree(path)
     return lockfile.digest(snapshot or {}), refusal
 
@@ -437,7 +465,20 @@ def _update_target(job: _Job, destination: platforms.Destination) -> InstallResu
     return _result(destination, job.name, UPDATED)
 
 
+def _copy_is_gone(destination: platforms.Destination, name: str) -> bool:
+    if fsutil.check_no_symlinks(destination.root, destination.parts):
+        return False
+    return not _is_present(destination.skill_path(name))
+
+
 def _uninstall_target(root: Path, destination, name: str, expected: str) -> InstallResult:
+    try:
+        gone = _copy_is_gone(destination, name)
+    except OSError as exc:
+        detail = f"cannot inspect installed copy: {exc}"
+        return _result(destination, name, ERROR, detail, EXIT_IO)
+    if gone:
+        return _result(destination, name, UNINSTALLED, GONE_DETAIL)
     refusal = _pristine_refusal(destination, name, expected)
     if refusal:
         return _result(destination, name, *refusal)
@@ -495,10 +536,12 @@ def uninstall(
         results = _failures(unmanaged, scope, name, NOT_MANAGED, NOT_MANAGED_DETAIL)
         for platform_id in managed:
             destination = _destination(root, scope, platform_id)
-            results.append(_uninstall_target(root, destination, name, entry["content_sha256"]))
+            expected = lockfile.expected_digest(entry, platform_id)
+            results.append(_uninstall_target(root, destination, name, expected))
         gone = {item.platform for item in results if item.status == UNINSTALLED}
         if entry is not None:
             entry["targets"] = [item for item in entry["targets"] if item not in gone]
+            _forget_digests(entry, gone)
         if entry is not None and not entry["targets"]:
             del skills[name]
     return results
@@ -597,17 +640,29 @@ def _update_name(run: _UpdateRun, name: str) -> list[InstallResult]:
     return _apply_updates(run, job, managed, commit)
 
 
-def _blocked_targets(job: _Job, destinations: list) -> list[InstallResult]:
+def _skip_detail(blocker: tuple) -> str:
+    if blocker == MODIFIED:
+        return "skipped (another target is modified)"
+    if blocker == MISSING:
+        return (
+            "skipped (another target is missing; uninstall the gone target, "
+            "then update, then install the target again)"
+        )
+    return "skipped (another target is unsafe)"
+
+
+def _blocked_targets(job: _Job, destinations: list, locked: dict) -> list[InstallResult]:
     """Results refusing the whole update when any target is not pristine; else an empty list."""
     refusals = []
     for destination in destinations:
         current, refusal = _installed_digest(destination, job.name)
-        if not refusal and current not in (job.expected, job.new_digest):
+        expected = lockfile.expected_digest(locked, destination.platform.id)
+        if not refusal and current not in (expected, job.new_digest):
             refusal = MODIFIED
         refusals.append(refusal)
     if not any(refusals):
         return []
-    skipped = (CONFLICT, "skipped (another target is modified)")
+    skipped = (CONFLICT, _skip_detail(next(item for item in refusals if item)))
     return [
         _result(destination, job.name, *(refusal or skipped))
         for destination, refusal in zip(destinations, refusals, strict=True)
@@ -617,17 +672,31 @@ def _blocked_targets(job: _Job, destinations: list) -> list[InstallResult]:
 def _apply_updates(run: _UpdateRun, job: _Job, managed: list[str], commit) -> list:
     with lockfile.transaction(run.root) as skills:
         locked = skills[job.name]
-        job = replace(job, expected=locked["content_sha256"])
         destinations = [_destination(run.root, run.scope, item) for item in managed]
-        blocked = _blocked_targets(job, destinations)
+        blocked = _blocked_targets(job, destinations, locked)
         if blocked:
             return blocked
-        results = [_update_target(job, destination) for destination in destinations]
-        current = {item.platform for item in results if item.status in (UPDATED, UP_TO_DATE)}
-        # Unchanged content with a moved commit is only recorded on an explicit --yes.
-        if current == set(locked["targets"]) and (run.yes or commit is None):
-            locked.update(content_sha256=job.new_digest, commit=commit)
+        results = []
+        for destination in destinations:
+            expected = lockfile.expected_digest(locked, destination.platform.id)
+            results.append(_update_target(replace(job, expected=expected), destination))
+        _record_update(run, job, locked, results, commit)
     return results
+
+
+def _record_update(run: _UpdateRun, job: _Job, locked: dict, results: list, commit) -> None:
+    current = {item.platform for item in results if item.status in (UPDATED, UP_TO_DATE)}
+    # Unchanged content with a moved commit is only recorded on an explicit --yes.
+    if current == set(locked["targets"]) and (run.yes or commit is None):
+        locked.update(content_sha256=job.new_digest, commit=commit)
+        locked.pop("target_digests", None)
+        return
+    digests = locked.setdefault("target_digests", {})
+    for platform_id in current:
+        digests[platform_id] = job.new_digest
+    _forget_digests(
+        locked, [item for item in current if job.new_digest == locked["content_sha256"]]
+    )
 
 
 def update(

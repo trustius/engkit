@@ -181,6 +181,9 @@ def _check_links(skill: Skill) -> list[Issue]:
         target = target.split("#", 1)[0]
         if not target:
             continue
+        if fsutil.printable(target) != target:
+            issues.append(Issue(skill.skill_md, "invalid reference: contains control characters"))
+            continue
         if target.startswith("/"):
             issues.append(Issue(skill.skill_md, f"reference '{target}' must be relative"))
             continue

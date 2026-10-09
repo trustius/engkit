@@ -33,6 +33,11 @@ def digest(snapshot: dict[str, str]) -> str:
     return fsutil.sha256_bytes(lines.encode())
 
 
+def expected_digest(entry: dict, platform_id: str) -> str:
+    """The digest an installed copy for ``platform_id`` must have to count as pristine."""
+    return entry.get("target_digests", {}).get(platform_id, entry["content_sha256"])
+
+
 def require_locking() -> None:
     if fcntl is None:
         raise EngkitError("lockfile updates are unsupported on this platform", EXIT_FAILURE)
@@ -55,6 +60,16 @@ def _entry_problem(name: str, entry: object) -> str:
     targets = entry["targets"]
     if not isinstance(targets, list) or not set(targets) <= set(platforms.PLATFORMS):
         return "targets must be a list of known platforms"
+    return _target_digests_problem(entry.get("target_digests"), targets)
+
+
+def _target_digests_problem(digests: object, targets: list) -> str:
+    if digests is None:
+        return ""
+    if not isinstance(digests, dict) or not set(digests) <= set(targets):
+        return "target_digests must map locked targets to digests"
+    if not all(isinstance(item, str) and SHA256_RE.match(item) for item in digests.values()):
+        return "target_digests values must be 64 lower-case hex digits"
     return ""
 
 

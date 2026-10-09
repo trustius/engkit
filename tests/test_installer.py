@@ -1,6 +1,7 @@
 import os
 import shutil
 import threading
+import unittest
 from pathlib import Path
 from unittest import mock
 
@@ -233,6 +234,16 @@ class InstallerTest(TempDirTest):
                     fsutil.tree_snapshot(winner / "demo"),
                 )
 
+    def test_private_umask_keeps_the_copy_identical_to_the_source(self):
+        previous = os.umask(0o077)
+        self.addCleanup(os.umask, previous)
+        result = self.install()[0]
+        self.assertEqual(result.status, "installed", result.detail)
+        source = self.toolkit / "demo"
+        installed = self.project / ".claude/skills/demo"
+        self.assertEqual(installer.status_of(source, installed), "identical")
+        self.assertTrue(os.access(installed / "scripts/run.sh", os.X_OK))
+
     def test_status_of(self):
         source = self.toolkit / "demo"
         dest = self.project / ".claude/skills/demo"
@@ -419,6 +430,39 @@ class LockedLifecycleTest(TempDirTest):
         expected = lockfile.digest(fsutil.tree_snapshot(self.dest))
         self.assertEqual(self.lock()["demo"]["content_sha256"], expected)
 
+    def partial_update(self):
+        self.install("all")
+        self.change_canonical()
+        calls = []
+
+        def fail_second(stage, target):
+            if stage == "update_staged":
+                calls.append(target)
+                if len(calls) == 2:
+                    raise OSError("simulated failure")
+
+        with mock.patch.object(installer, "fault_hook", fail_second):
+            return [r.status for r in self.update("demo")]
+
+    def test_uninstall_of_the_updated_target_after_a_partial_update_succeeds(self):
+        self.assertEqual(self.partial_update(), ["updated", "error"])
+        entry = self.lock()["demo"]
+        self.assertEqual(set(entry["target_digests"]), {"claude"})
+        self.assertEqual(self.uninstall("claude")[0].status, "uninstalled")
+        self.assertFalse(self.dest.exists())
+        entry = self.lock()["demo"]
+        self.assertEqual(entry["targets"], ["codex"])
+        self.assertNotIn("target_digests", entry)
+        self.assertEqual([r.status for r in self.update("demo")], ["updated"])
+        expected = lockfile.digest(fsutil.tree_snapshot(self.project / ".agents/skills/demo"))
+        self.assertEqual(self.lock()["demo"]["content_sha256"], expected)
+
+    def test_later_update_finishes_the_remaining_target_and_clears_the_map(self):
+        self.partial_update()
+        self.assertEqual([r.status for r in self.update("demo")], ["up to date", "updated"])
+        self.assertNotIn("target_digests", self.lock()["demo"])
+        self.assertEqual(self.uninstall("all")[0].status, "uninstalled")
+
     def test_global_scope_uses_home_lock(self):
         installer.install(self.toolkit, "demo", "codex", scope="user")
         self.change_canonical()
@@ -439,6 +483,61 @@ class LockedLifecycleTest(TempDirTest):
         self.assertEqual(self.uninstall("codex")[0].status, "uninstalled")
         self.assertEqual(self.lock(), {})
         self.assertEqual(os.listdir(self.project / ".engkit/staging"), [])
+
+    def test_uninstall_of_a_manually_deleted_copy_drops_the_lock_target(self):
+        self.install("all")
+        shutil.rmtree(self.dest)
+        other = self.project / ".agents/skills/demo"
+        before = snapshot(other)
+        result = self.uninstall("claude")[0]
+        self.assertEqual((result.status, result.exit_code), ("uninstalled", 0))
+        self.assertIn("already gone", result.detail)
+        self.assertEqual(self.lock()["demo"]["targets"], ["codex"])
+        self.assertEqual(snapshot(other), before)
+
+    @unittest.skipIf(os.geteuid() == 0, "root ignores directory permissions")
+    def test_uninstall_with_an_unreadable_skills_dir_is_an_error_and_keeps_the_lock(self):
+        self.install()
+        skills_dir = self.dest.parent
+        os.chmod(skills_dir, 0o000)
+        self.addCleanup(os.chmod, skills_dir, 0o755)
+        result = self.uninstall("claude")[0]
+        self.assertEqual((result.status, result.exit_code), ("error", EXIT_IO))
+        self.assertNotIn("already gone", result.detail)
+        self.assertEqual(self.lock()["demo"]["targets"], ["claude"])
+
+    def test_update_names_the_real_reason_when_another_target_is_missing(self):
+        self.install("all")
+        self.change_canonical()
+        shutil.rmtree(self.dest)
+        details = {r.platform: r.detail for r in self.update("demo")}
+        self.assertIn("another target is missing", details["codex"])
+        self.assertIn("uninstall the gone target, then update", details["codex"])
+        self.assertNotIn("modified", details["codex"])
+
+    def test_update_of_a_manually_deleted_copy_asks_for_a_reinstall(self):
+        self.install("all")
+        self.change_canonical()
+        shutil.rmtree(self.dest)
+        results = self.update("demo")
+        self.assertEqual(results[0].status, "error")
+        self.assertIn("reinstall", results[0].detail)
+        self.assertFalse(self.dest.exists())
+        self.assertNotIn("extra.md", os.listdir(self.project / ".agents/skills/demo"))
+
+    def test_chmod_x_on_an_installed_file_is_a_modification(self):
+        for action in ("update", "uninstall"):
+            with self.subTest(action=action):
+                self.install()
+                self.change_canonical()
+                os.chmod(self.dest / "SKILL.md", 0o755)
+                result = {"update": lambda: self.update("demo"), "uninstall": self.uninstall}[
+                    action
+                ]()[0]
+                self.assertEqual((result.status, result.exit_code), ("conflict", EXIT_CONFLICT))
+                self.assertTrue(self.dest.exists())
+                os.chmod(self.dest / "SKILL.md", 0o644)
+                self.assertEqual(self.uninstall()[0].status, "uninstalled")  # mode restored
 
     def test_uninstall_modified_conflicts_and_is_untouched(self):
         self.install()

@@ -277,3 +277,46 @@ class RemoteInstallTest(TempDirTest):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class HostileSourceTest(TempDirTest):
+    def test_invalid_date_in_remote_skill_is_reported_without_traceback(self):
+        files = {
+            "skills/demo/SKILL.md": skill_text("demo").replace(
+                "name: demo\n", "name: demo\nupdated: 2026-13-45\n", 1
+            )
+        }
+        repo = make_repo(self.tmp / "remote", files)
+        code, _, err = run_cli(["list", "--source", f"file://{repo}"])
+        self.assertEqual(code, EXIT_FAILURE)
+        self.assertNotIn("Traceback", err)
+        self.assertIn("frontmatter", err)
+
+    def test_deeply_nested_frontmatter_in_remote_skill_is_reported(self):
+        text = skill_text("demo").replace("name: demo\n", "name: demo\nx: " + "[" * 3000 + "\n", 1)
+        repo = make_repo(self.tmp / "remote", {"skills/demo/SKILL.md": text})
+        code, out, err = run_cli(["list", "--source", f"file://{repo}"])
+        self.assertEqual(code, EXIT_FAILURE)
+        self.assertNotIn("Traceback", err)
+        self.assertIn("too deeply nested", out + err)
+
+    def test_nul_byte_in_link_is_a_validation_error_in_the_preview(self):
+        repo = make_repo(
+            self.tmp / "remote",
+            {"skills/demo/SKILL.md": skill_text("demo", extra="\n[x](bad\x00name.md)\n")},
+        )
+        project = self.make_project()
+        argv = ["install", "--source", f"file://{repo}", "--skill", "demo", "--target", "claude"]
+        code, out, err = run_cli([*argv, "--project-dir", str(project)])
+        self.assertEqual(code, EXIT_FAILURE)
+        self.assertNotIn("Traceback", err)
+        self.assertIn("invalid reference", out + err)
+
+    def test_missing_path_is_a_clean_error_without_temp_directory(self):
+        repo = make_repo(self.tmp / "remote", {"skills/demo/SKILL.md": skill_text("demo")})
+        code, out, err = run_cli(["list", "--source", f"file://{repo}", "--path", "nope"])
+        self.assertEqual(code, EXIT_FAILURE)
+        self.assertTrue(err.startswith("engkit: error:"), err)
+        self.assertIn("nope", err)
+        self.assertNotIn("engkit-src-", out + err)
+        self.assertNotIn(str(self.tmp), out + err)

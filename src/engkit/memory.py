@@ -37,6 +37,14 @@ SECRET_PATTERNS = (
 ASSIGNMENT = re.compile(
     r"(?i)\b\w*(?:key|password|passwd|secret|token)\w*\s*[:=]\s*[\"']?([^\s\"',]+)"
 )
+URL_CREDENTIALS = re.compile(r"\b[a-z][a-z0-9+.-]*://[^/\s:@]+:([^/\s@]+)@")
+BEARER_TOKEN = re.compile(r"(?i)\bBearer\s+([A-Za-z0-9._~+/=-]{16,})")
+# Patterns whose first group is the value; a placeholder value is not a secret.
+VALUE_PATTERNS = (
+    ("credential assignment", ASSIGNMENT),
+    ("URL with credentials", URL_CREDENTIALS),
+    ("Bearer token", BEARER_TOKEN),
+)
 
 
 @dataclass
@@ -111,9 +119,10 @@ def _secret_issues(path: Path, text: str) -> list[Issue]:
     issues = []
     for number, line in enumerate(text.splitlines(), start=1):
         kinds = [label for label, pattern in SECRET_PATTERNS if pattern.search(line)]
-        match = ASSIGNMENT.search(line)
-        if match and not PLACEHOLDER.fullmatch(match.group(1)):
-            kinds.append("credential assignment")
+        for label, pattern in VALUE_PATTERNS:
+            values = pattern.findall(line)
+            if any(not PLACEHOLDER.fullmatch(value) for value in values):
+                kinds.append(label)
         for kind in kinds:
             message = f"line {number}: possible secret ({kind}); value not shown"
             issues.append(Issue(path, message, "warning"))
@@ -140,8 +149,9 @@ def _index_issues(memory_dir: Path, entries: dict[str, dict | None]) -> list[Iss
     index_path = memory_dir / "INDEX.md"
     if not index_path.is_file() or index_path.is_symlink():
         return [Issue(index_path, "INDEX.md must exist as a regular file")]
-    lines = index_path.read_text(encoding="utf-8", errors="replace").splitlines()
-    issues = []
+    text = index_path.read_text(encoding="utf-8", errors="replace")
+    lines = text.splitlines()
+    issues = _secret_issues(index_path, text)
     if len(lines) > MAX_INDEX_LINES:
         issues.append(Issue(index_path, f"INDEX.md exceeds {MAX_INDEX_LINES} lines"))
     listed: list[str] = []

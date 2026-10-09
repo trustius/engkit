@@ -53,6 +53,25 @@ class FrontmatterError(ValueError):
     pass
 
 
+MAX_FRONTMATTER_BYTES = 64 * 1024
+
+
+def _parse_frontmatter_yaml(raw: str):
+    if len(raw.encode("utf-8")) > MAX_FRONTMATTER_BYTES:
+        raise FrontmatterError("frontmatter is larger than 64 KiB")
+    try:
+        return yaml.safe_load(raw)
+    except RecursionError:
+        raise FrontmatterError("frontmatter is too deeply nested") from None
+    except ValueError as exc:  # e.g. an impossible calendar date such as 2026-13-45
+        raise FrontmatterError(f"invalid frontmatter value: {exc}") from None
+    except yaml.YAMLError as exc:
+        mark = getattr(exc, "problem_mark", None)
+        where = f" at frontmatter line {mark.line + 1}" if mark else ""
+        problem = getattr(exc, "problem", exc)
+        raise FrontmatterError(f"malformed YAML{where}: {problem}") from None
+
+
 def split_frontmatter(text: str) -> tuple[dict, str]:
     """Return (metadata, body); frontmatter is the first block delimited by '---' lines."""
     if text.startswith("﻿"):
@@ -67,13 +86,7 @@ def split_frontmatter(text: str) -> tuple[dict, str]:
             break
     else:
         raise FrontmatterError("unterminated YAML frontmatter (no closing '---')")
-    try:
-        data = yaml.safe_load(raw)
-    except yaml.YAMLError as exc:
-        mark = getattr(exc, "problem_mark", None)
-        where = f" at frontmatter line {mark.line + 1}" if mark else ""
-        problem = getattr(exc, "problem", exc)
-        raise FrontmatterError(f"malformed YAML{where}: {problem}") from None
+    data = _parse_frontmatter_yaml(raw)
     if not isinstance(data, dict):
         raise FrontmatterError("frontmatter must be a YAML mapping")
     return data, body

@@ -162,6 +162,9 @@ def skills_dir(root: Path, path: str | None) -> Path:
         raise EngkitError(
             f"skills path {found.name!r} resolves outside the repository", EXIT_FAILURE
         )
+    if not found.is_dir():
+        label = fsutil.printable(path) if path is not None else "skills"
+        raise EngkitError(f"skills path {label!r} not found in the repository", EXIT_FAILURE)
     return found
 
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 
 from engkit import memory
-from tests.helpers import TempDirTest, snapshot
+from tests.helpers import TempDirTest, run_cli, snapshot
 
 ENTRY = """---
 name: retry-policy
@@ -85,6 +85,18 @@ class MemoryTest(TempDirTest):
         self.assert_error(self.good_project("no front\n"), "frontmatter")
         self.assert_error(self.good_project("---\nname: [oops\n---\n", name="q"), "YAML")
 
+    def test_deeply_nested_frontmatter_is_an_error_not_a_traceback(self):
+        entry = "---\nx: " + "[" * 3000 + "\n---\n"
+        project = self.good_project(entry)
+        code, out, err = run_cli(["memory", "validate", "--project-dir", str(project)])
+        self.assertNotEqual(code, 0)
+        self.assertNotIn("Traceback", err)
+        self.assertIn("too deeply nested", out + err)
+
+    def test_oversized_frontmatter_is_an_error(self):
+        entry = "---\nname: retry-policy\nnote: " + "a" * 70000 + "\n---\n"
+        self.assert_error(self.good_project(entry), "frontmatter is larger than 64 KiB")
+
     def test_field_errors(self):
         cases = {
             "name: retry-policy": ("name: other-name", "must equal the file stem"),
@@ -147,3 +159,46 @@ class MemoryTest(TempDirTest):
         memory.validate(root)
         memory.status(root)
         self.assertEqual(snapshot(root), before)
+
+    def test_invalid_calendar_date_is_an_error_without_traceback(self):
+        root = self.good_project(ENTRY.replace("2026-10-09", "2026-13-45"))
+        self.assert_error(root, "invalid frontmatter value")
+        code, _, err = run_cli(["memory", "validate", "--project-dir", str(root)])
+        self.assertNotEqual(code, 0)
+        self.assertNotIn("Traceback", err)
+        self.assertIn("frontmatter", err)
+
+    def warnings_text(self, root):
+        issues = [i for i in memory.validate(root) if i.level == "warning"]
+        return issues, " ".join(i.format() for i in issues)
+
+    def test_secret_in_index_is_flagged_without_the_value(self):
+        index = INDEX + "password: hunter2hunter2\n"
+        issues, text = self.warnings_text(self.good_project(index=index))
+        self.assertIn("INDEX.md", text)
+        self.assertIn("credential assignment", text)
+        self.assertNotIn("hunter2", text)
+
+    def test_every_assignment_on_a_line_is_checked(self):
+        entry = ENTRY + "token: <your-token> password: hunter2hunter2\n"
+        issues, text = self.warnings_text(self.good_project(entry))
+        self.assertEqual(len(issues), 1)
+        self.assertNotIn("hunter2", text)
+
+    def test_url_with_credentials_is_flagged(self):
+        entry = ENTRY + "see https://deploy:s3cr3tpw@git.example.test/repo.git\n"
+        issues, text = self.warnings_text(self.good_project(entry))
+        self.assertEqual(len(issues), 1)
+        self.assertIn("URL with credentials", text)
+        self.assertNotIn("s3cr3tpw", text)
+        clean = ENTRY + "see https://git.example.test/repo.git and https://user:<pw>@host/x\n"
+        self.assertEqual(self.warnings_text(self.good_project(clean, name="clean"))[0], [])
+
+    def test_bearer_token_is_flagged(self):
+        entry = ENTRY + "curl -H 'Authorization: Bearer abcdef0123456789abcdef'\n"
+        issues, text = self.warnings_text(self.good_project(entry))
+        self.assertEqual(len(issues), 1)
+        self.assertIn("Bearer token", text)
+        self.assertNotIn("abcdef0123456789", text)
+        clean = ENTRY + "Authorization: Bearer <token>\nBearer tokens expire.\n"
+        self.assertEqual(self.warnings_text(self.good_project(clean, name="clean"))[0], [])
