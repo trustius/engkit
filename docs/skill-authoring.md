@@ -25,6 +25,21 @@ never commit per-platform copies. Platform differences belong in
 - Relative links resolve inside the skill directory. Symlinks and special files
   are rejected, because the installer copies regular files only.
 
+## Shared guardrails
+
+Every `SKILL.md` repeats these four lines verbatim under `## Guardrails`. They
+are defined once as `SHARED_GUARDRAILS` in `src/engkit/validator.py`; installed
+skills must be self-contained, so each skill carries its own copy and the
+validator keeps the copies identical. A skill may add more specific guardrails
+(for example, exact-argv approval for local commands) but must not reword these.
+
+```markdown
+- Plans: write any plan to `docs/plans/YYYY-MM-DD-<slug>.md` at the project root; if that name exists, add `-2`, `-3`; never overwrite a file; report the path. If today's date is unknown, ask.
+- No auto-run on servers: never run anything automatically on a server environment (prod, staging, dev, test), including its databases, clusters, queues and cloud accounts. Never run a state-changing action there; write the exact steps for the user. A read-only command (status, logs) runs only after the user says yes to that exact command. If unsure whether a target is a server environment, treat it as one and ask.
+- Sensitive data: never print, copy or store keys, tokens, passwords, connection strings, PII or PHI, whether in chat, plans, memory or files. Refer to them by location (`file:line`) and write `[REDACTED]`. Use synthetic data in examples.
+- Incremental: work in small steps; after each step, check the result and report it; stop at the first failed check and ask.
+```
+
 ## Content rules
 
 - **When to ask.** List the cases where the agent must stop and ask the user
